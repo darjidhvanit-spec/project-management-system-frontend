@@ -108,7 +108,7 @@ const Tasks = () => {
       setError("");
 
       const response = await axios.post(
-        "https://project-management-system-frontend-nine.vercel.app/task/task_list",
+        "http://localhost:5000/task/task_list",
         {
           search: searchTerm,
         },
@@ -146,7 +146,7 @@ const Tasks = () => {
   const fetchProjects = useCallback(async () => {
     try {
       const response = await axios.post(
-        "https://project-management-system-frontend-nine.vercel.app/project/project_list",
+        "http://localhost:5000/project/project_list",
         {},
         API_HEADERS
       );
@@ -176,7 +176,7 @@ const Tasks = () => {
   const fetchUsers = useCallback(async () => {
     try {
       const response = await axios.post(
-        "https://project-management-system-frontend-nine.vercel.app/user/user_list",
+        "http://localhost:5000/user/user_list",
         {},
         API_HEADERS
       );
@@ -609,7 +609,7 @@ const Tasks = () => {
       if (editId) {
         const response =
           await axios.put(
-            "https://project-management-system-frontend-nine.vercel.app/task/task_update",
+            "http://localhost:5000/task/task_update",
             {
               id: editId,
               ...payload,
@@ -641,7 +641,7 @@ const Tasks = () => {
       // =================================================
       const response =
         await axios.post(
-          "https://project-management-system-frontend-nine.vercel.app/task/task_add",
+          "http://localhost:5000/task/task_add",
           payload,
           API_HEADERS
         );
@@ -691,7 +691,7 @@ const Tasks = () => {
     try {
       const response =
         await axios.delete(
-          "https://project-management-system-frontend-nine.vercel.app/task/task_delete",
+          "http://localhost:5000/task/task_delete",
           {
             ...API_HEADERS,
             data: {
