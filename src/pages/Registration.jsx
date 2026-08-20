@@ -35,7 +35,7 @@ const Registration = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/user/register_user",
+        "https://project-management-system-backend-2-qyqt.onrender.com/user/register_user",
         formData,
         {
           headers: {

@@ -95,7 +95,7 @@ const Dashboard = () => {
             };
 
             const response = await axios.post(
-                "http://localhost:5000/user/dashboard_count",
+                "https://project-management-system-backend-2-qyqt.onrender.com/user/dashboard_count",
                 payload,
                 {
                     headers: {

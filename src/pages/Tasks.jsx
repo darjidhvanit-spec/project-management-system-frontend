@@ -108,7 +108,7 @@ const Tasks = () => {
       setError("");
 
       const response = await axios.post(
-        "http://localhost:5000/task/task_list",
+        "https://project-management-system-backend-2-qyqt.onrender.com/task/task_list",
         {
           search: searchTerm,
         },
@@ -146,7 +146,7 @@ const Tasks = () => {
   const fetchProjects = useCallback(async () => {
     try {
       const response = await axios.post(
-        "http://localhost:5000/project/project_list",
+        "https://project-management-system-backend-2-qyqt.onrender.com/project/project_list",
         {},
         API_HEADERS
       );
@@ -176,7 +176,7 @@ const Tasks = () => {
   const fetchUsers = useCallback(async () => {
     try {
       const response = await axios.post(
-        "http://localhost:5000/user/user_list",
+        "https://project-management-system-backend-2-qyqt.onrender.com/user/user_list",
         {},
         API_HEADERS
       );
@@ -609,7 +609,7 @@ const Tasks = () => {
       if (editId) {
         const response =
           await axios.put(
-            "http://localhost:5000/task/task_update",
+            "https://project-management-system-backend-2-qyqt.onrender.com/task/task_update",
             {
               id: editId,
               ...payload,
@@ -641,7 +641,7 @@ const Tasks = () => {
       // =================================================
       const response =
         await axios.post(
-          "http://localhost:5000/task/task_add",
+          "https://project-management-system-backend-2-qyqt.onrender.com/task/task_add",
           payload,
           API_HEADERS
         );
@@ -691,7 +691,7 @@ const Tasks = () => {
     try {
       const response =
         await axios.delete(
-          "http://localhost:5000/task/task_delete",
+          "https://project-management-system-backend-2-qyqt.onrender.com/task/task_delete",
           {
             ...API_HEADERS,
             data: {

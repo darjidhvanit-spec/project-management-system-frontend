@@ -19,7 +19,7 @@ import {
     Eye,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://project-management-system-backend-2-qyqt.onrender.com";
 const API_HEADERS = {
     headers: {
         "api-key": "projectmanagement",
