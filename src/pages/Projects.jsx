@@ -275,7 +275,7 @@ const Projects = () => {
         const isManagerOrAdmin = (userData) => {
             const role = String(userData?.role || "").trim().toLowerCase();
 
-            return ["Manager", "Admin"].includes(role);
+            return ["manager", "admin"].includes(role);
         };
 
         console.log("Logged In User:", userData);
