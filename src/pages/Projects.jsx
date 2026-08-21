@@ -272,6 +272,12 @@ const Projects = () => {
     const handleAddProject = () => {
         const userData = getLoggedInUser();
 
+        const isManagerOrAdmin = (userData) => {
+            const role = String(userData?.role || "").trim().toLowerCase();
+
+            return ["manager", "admin"].includes(role);
+        };
+
         console.log("Logged In User:", userData);
         console.log("User Role:", userData?.role);
 
