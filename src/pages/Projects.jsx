@@ -273,7 +273,7 @@ const Projects = () => {
         const userData = getLoggedInUser();
         const userRole = (userData?.role || "").toLowerCase();
 
-        if (userData && userData.role && userRole !== "manager" && userRole !== "admin") {
+        if (userData && userData.role && userRole !== "Manager" && userRole !== "Admin") {
             setError("Only Manager or Admin can create a project.");
             return;
         }
