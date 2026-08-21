@@ -271,9 +271,11 @@ const Projects = () => {
     // ============================================
     const handleAddProject = () => {
         const userData = getLoggedInUser();
-        const userRole = (userData?.role || "").toLowerCase();
 
-        if (userData && userData.role && userRole !== "Manager" && userRole !== "Admin") {
+        console.log("Logged In User:", userData);
+        console.log("User Role:", userData?.role);
+
+        if (!isManagerOrAdmin(userData)) {
             setError("Only Manager or Admin can create a project.");
             return;
         }
@@ -295,13 +297,14 @@ const Projects = () => {
         setSuccess("");
         setFormErrors({});
         setCreatorName(userName);
+
         setFormData({
             ...initialFormData,
             createdBy: userId
         });
+
         setShowModal(true);
     };
-
     // ============================================
     // OPEN EDIT PROJECT MODAL
     // ============================================
