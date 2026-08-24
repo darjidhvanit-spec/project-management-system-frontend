@@ -120,6 +120,9 @@ const MyTasks = () => {
         }
     }, []);
 
+    // =====================================================
+    // FETCH TASKS
+    // =====================================================
     const fetchTasks = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -147,7 +150,7 @@ const MyTasks = () => {
             setTasks([]);
             setError(
                 err.response?.data?.message ||
-                "Failed to connect to task server. Please make sure backend is running on port 5000."
+                "Failed to connect to task server."
             );
         } finally {
             setLoading(false);
@@ -155,11 +158,14 @@ const MyTasks = () => {
         }
     }, []);
 
+    // =====================================================
+    // FETCH PROJECTS
+    // =====================================================
     const fetchProjects = useCallback(async () => {
         try {
             const response = await axios.post(
                 `${API_BASE_URL}/project/project_list`,
-                {},
+                user._id ? { userId: user._id } : {},
                 API_HEADERS
             );
 
@@ -173,7 +179,7 @@ const MyTasks = () => {
             console.error("MyTasks Project List Error:", err);
             setProjects([]);
         }
-    }, []);
+    }, [user._id]);
 
     // Initial Load
     useEffect(() => {
@@ -181,7 +187,9 @@ const MyTasks = () => {
         fetchProjects();
     }, [fetchTasks, fetchProjects]);
 
-
+    // =====================================================
+    // HELPER FUNCTIONS
+    // =====================================================
     const getProjectName = (task) => {
         const projectData = task.projectId || task.project;
         if (typeof projectData === "object" && projectData !== null) {
@@ -236,7 +244,6 @@ const MyTasks = () => {
         }
     };
 
-    // Normalize status names for consistent checks and displays
     const normalizeStatus = (status) => {
         if (!status) return "Todo";
         const s = String(status).trim().toLowerCase();
@@ -246,7 +253,6 @@ const MyTasks = () => {
         return "Todo";
     };
 
-    // Check if task is overdue
     const isTaskOverdue = (task) => {
         const normalized = normalizeStatus(task.status);
         if (normalized === "Done") return false;
@@ -260,7 +266,6 @@ const MyTasks = () => {
         return due < today;
     };
 
-    // Priority Styling
     const getPriorityClass = (priority) => {
         const p = String(priority).toLowerCase();
         if (p === "high") {
@@ -272,7 +277,6 @@ const MyTasks = () => {
         return "border-emerald-200 bg-emerald-50 text-emerald-700";
     };
 
-    // Status Styling
     const getStatusClass = (status) => {
         const s = normalizeStatus(status);
         if (s === "Done") {
@@ -287,17 +291,14 @@ const MyTasks = () => {
         return "border-slate-200 bg-slate-50 text-slate-700";
     };
 
-
     const handleStatusChange = async (taskId, newStatus) => {
         try {
             setUpdatingTaskId(taskId);
 
-            // Find existing task to maintain required payload fields
             const currentTask = tasks.find(
                 (t) => (t._id || t.id) === taskId
             );
 
-            // Format status to what backend expects (Todo, In Progress, Review, Completed)
             let backendStatus = newStatus;
             if (newStatus === "To Do" || newStatus === "Todo") backendStatus = "Todo";
             if (newStatus === "Done" || newStatus === "Completed") backendStatus = "Completed";
@@ -324,7 +325,6 @@ const MyTasks = () => {
             );
 
             if (response.data?.success) {
-                // Optimistic UI update
                 setTasks((prev) =>
                     prev.map((t) =>
                         (t._id || t.id) === taskId
@@ -347,11 +347,35 @@ const MyTasks = () => {
     };
 
     // =====================================================
-    // 6. FILTERING LOGIC
+    // UNIQUE ASSIGNED PROJECTS FOR DROPDOWN (ONLY ASSIGNED TO MEMBER)
+    // =====================================================
+    const projectOptions = useMemo(() => {
+        const set = new Set();
+        
+        // Filter tasks that belong to current logged in user
+        const memberTasks = (assignedOnly && user._id) 
+            ? tasks.filter((t) => {
+                const aId = getAssignedId(t.assignedTo);
+                const aName = getAssignedName(t.assignedTo).toLowerCase();
+                return aId === user._id || aName === user.name.toLowerCase();
+              })
+            : tasks;
+
+        memberTasks.forEach((t) => {
+            const pName = getProjectName(t);
+            if (pName && pName !== "Unknown Project" && pName !== "General") {
+                set.add(pName);
+            }
+        });
+
+        return Array.from(set);
+    }, [tasks, assignedOnly, user, projects]);
+
+    // =====================================================
+    // FILTERING LOGIC FOR TABLE/BOARD
     // =====================================================
     const filteredTasks = useMemo(() => {
         return tasks.filter((task) => {
-            const taskId = task._id || task.id;
             const title = (task.taskTitle || task.title || "").toLowerCase();
             const description = (task.description || "").toLowerCase();
             const projectName = getProjectName(task).toLowerCase();
@@ -425,7 +449,9 @@ const MyTasks = () => {
         projects,
     ]);
 
-
+    // =====================================================
+    // STATS LOGIC
+    // =====================================================
     const baseTasksForStats = useMemo(() => {
         if (assignedOnly && user._id) {
             return tasks.filter((t) => {
@@ -489,27 +515,9 @@ const MyTasks = () => {
         },
     ];
 
-    // Unique project names from projects API + tasks for the filter
-    const projectOptions = useMemo(() => {
-        const set = new Set();
-        projects.forEach((p) => {
-            if (p.projectName) set.add(p.projectName);
-            else if (p.name) set.add(p.name);
-        });
-        tasks.forEach((t) => {
-            const pName = getProjectName(t);
-            if (pName && pName !== "Unknown Project" && pName !== "General") {
-                set.add(pName);
-            }
-        });
-        return Array.from(set);
-    }, [projects, tasks]);
-
     return (
         <div className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
-            {/* =====================================================
-                TOP HEADER & ACTIONS
-            ====================================================== */}
+            {/* TOP HEADER & ACTIONS */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl sm:text-[28px] font-bold text-[#07152d]">
@@ -527,7 +535,6 @@ const MyTasks = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {/* User assignment toggle */}
                     {user.role?.toLowerCase() !== "member" && (
                         <button
                             type="button"
@@ -542,13 +549,11 @@ const MyTasks = () => {
                         </button>
                     )}
 
-                    {/* Refresh Button */}
                     <button
                         type="button"
                         onClick={() => fetchTasks(true)}
                         disabled={refreshing || loading}
                         className="flex items-center gap-2 rounded-lg border border-[#dfe5ed] bg-white px-3.5 py-2 text-xs font-medium text-[#40536e] shadow-sm transition hover:bg-[#f5f8fc] disabled:opacity-50"
-                        title="Refresh Tasks"
                     >
                         <RefreshCw
                             size={15}
@@ -559,9 +564,7 @@ const MyTasks = () => {
                 </div>
             </div>
 
-            {/* =====================================================
-                ERROR ALERT
-            ====================================================== */}
+            {/* ERROR ALERT */}
             {error && (
                 <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                     <div className="flex items-center gap-3">
@@ -578,9 +581,7 @@ const MyTasks = () => {
                 </div>
             )}
 
-            {/* =====================================================
-                STATS COUNTERS
-            ====================================================== */}
+            {/* STATS COUNTERS */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
                 {stats.map((item) => {
                     const isSelected =
@@ -624,11 +625,8 @@ const MyTasks = () => {
                 })}
             </div>
 
-            {/* =====================================================
-                FILTERS & SEARCH BAR
-            ====================================================== */}
+            {/* FILTERS & SEARCH BAR */}
             <section className="mt-5 rounded-xl border border-[#dfe5ed] bg-white p-4 shadow-sm">
-                {/* Search + View Mode */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="relative w-full sm:max-w-md">
                         <Search
@@ -675,7 +673,7 @@ const MyTasks = () => {
 
                 {/* Dropdown Filters */}
                 <div className="mt-3.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Project Filter */}
+                    {/* Project Filter - ONLY SHOWS MEMBER'S ASSIGNED PROJECTS */}
                     <select
                         value={projectFilter}
                         onChange={(e) => setProjectFilter(e.target.value)}
@@ -729,9 +727,7 @@ const MyTasks = () => {
                 </div>
             </section>
 
-            {/* =====================================================
-                LIST VIEW (TABLE)
-            ====================================================== */}
+            {/* LIST VIEW (TABLE) */}
             {viewMode === "list" && (
                 <section className="mt-5 overflow-hidden rounded-xl border border-[#dfe5ed] bg-white shadow-sm">
                     <div className="overflow-x-auto">
@@ -768,142 +764,96 @@ const MyTasks = () => {
                             <tbody className="divide-y divide-[#e8edf3]">
                                 {loading ? (
                                     <tr>
-                                        <td
-                                            colSpan="8"
-                                            className="px-5 py-16 text-center text-sm text-[#71809b]"
-                                        >
-                                            <div className="flex flex-col items-center justify-center gap-3">
-                                                <Loader2
-                                                    size={28}
-                                                    className="animate-spin text-[#2161f5]"
-                                                />
-                                                <span>Loading tasks from server...</span>
+                                        <td colSpan="8" className="py-12 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                                                <Loader2 size={18} className="animate-spin text-[#2161f5]" />
+                                                Loading tasks...
                                             </div>
                                         </td>
                                     </tr>
-                                ) : filteredTasks.length > 0 ? (
-                                    filteredTasks.map((task, index) => {
+                                ) : filteredTasks.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" className="py-12 text-center text-sm text-gray-500">
+                                            No tasks found matching your filter criteria.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredTasks.map((task, idx) => {
                                         const taskId = task._id || task.id;
                                         const normalized = normalizeStatus(task.status);
-                                        const overdue = isTaskOverdue(task);
-                                        const isUpdating = updatingTaskId === taskId;
+                                        const isOverdue = isTaskOverdue(task);
 
                                         return (
-                                            <tr
-                                                key={taskId}
-                                                className="transition hover:bg-[#fbfcfe]"
-                                            >
-                                                <td className="px-5 py-4 text-sm text-[#8ca0ba]">
-                                                    {index + 1}
+                                            <tr key={taskId || idx} className="hover:bg-[#f8fafc] transition">
+                                                <td className="px-5 py-4 text-xs font-medium text-gray-400">
+                                                    {idx + 1}
                                                 </td>
 
-                                                {/* Task Title + Description */}
+                                                {/* TASK TITLE & DESC */}
                                                 <td className="px-5 py-4">
-                                                    <h3 className="text-sm font-semibold text-[#07152d]">
-                                                        {task.taskTitle || task.title || "Untitled Task"}
-                                                    </h3>
-                                                    {task.description && (
-                                                        <p className="mt-1 max-w-[340px] truncate text-xs text-[#71809b]">
-                                                            {task.description}
+                                                    <div className="max-w-xs">
+                                                        <p className="text-sm font-semibold text-[#07152d] line-clamp-1">
+                                                            {task.taskTitle || task.title || "Untitled Task"}
                                                         </p>
-                                                    )}
+                                                        {task.description && (
+                                                            <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">
+                                                                {task.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </td>
 
-                                                {/* Project */}
-                                                <td className="px-5 py-4">
-                                                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#30415b]">
-                                                        <Folder size={14} className="text-[#8da0bb]" />
-                                                        {getProjectName(task)}
-                                                    </span>
+                                                {/* PROJECT */}
+                                                <td className="px-5 py-4 text-xs font-medium text-[#40536e]">
+                                                    {getProjectName(task)}
                                                 </td>
 
-                                                {/* Assigned To */}
+                                                {/* ASSIGNED TO */}
                                                 <td className="px-5 py-4 text-xs font-medium text-[#40536e]">
                                                     {getAssignedName(task.assignedTo)}
                                                 </td>
 
-                                                {/* Priority */}
+                                                {/* PRIORITY */}
                                                 <td className="px-5 py-4">
-                                                    <span
-                                                        className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${getPriorityClass(
-                                                            task.priority
-                                                        )}`}
-                                                    >
+                                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getPriorityClass(task.priority)}`}>
                                                         {task.priority || "Medium"}
                                                     </span>
                                                 </td>
 
-                                                {/* Status Dropdown */}
+                                                {/* STATUS DROPDOWN */}
                                                 <td className="px-5 py-4">
-                                                    <div className="relative w-[125px]">
-                                                        {isUpdating ? (
-                                                            <div className="flex h-8 items-center gap-1.5 rounded-lg border border-[#cfd9e6] bg-gray-50 px-2.5 text-xs text-[#64748b]">
-                                                                <Loader2
-                                                                    size={13}
-                                                                    className="animate-spin text-[#2161f5]"
-                                                                />
-                                                                <span>Saving...</span>
+                                                    <div className="relative inline-block">
+                                                        {updatingTaskId === taskId ? (
+                                                            <div className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-500">
+                                                                <Loader2 size={13} className="animate-spin text-[#2161f5]" />
+                                                                Updating...
                                                             </div>
                                                         ) : (
-                                                            <>
-                                                                <select
-                                                                    value={
-                                                                        normalized === "Done"
-                                                                            ? "Done"
-                                                                            : normalized === "In Progress"
-                                                                                ? "In Progress"
-                                                                                : normalized === "In Review"
-                                                                                    ? "In Review"
-                                                                                    : "To Do"
-                                                                    }
-                                                                    onChange={(e) =>
-                                                                        handleStatusChange(
-                                                                            taskId,
-                                                                            e.target.value
-                                                                        )
-                                                                    }
-                                                                    className={`h-8 w-full appearance-none rounded-lg border px-2.5 pr-7 text-xs font-medium outline-none transition ${getStatusClass(
-                                                                        task.status
-                                                                    )}`}
-                                                                >
-                                                                    <option value="To Do">To Do</option>
-                                                                    <option value="In Progress">
-                                                                        In Progress
-                                                                    </option>
-                                                                    <option value="In Review">
-                                                                        In Review
-                                                                    </option>
-                                                                    <option value="Done">Done</option>
-                                                                </select>
-
-                                                                <ChevronDown
-                                                                    size={13}
-                                                                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-current opacity-70"
-                                                                />
-                                                            </>
+                                                            <select
+                                                                value={normalized}
+                                                                onChange={(e) => handleStatusChange(taskId, e.target.value)}
+                                                                className={`h-8 cursor-pointer rounded-lg border px-2.5 pr-7 text-xs font-semibold outline-none transition ${getStatusClass(task.status)}`}
+                                                            >
+                                                                <option value="Todo">To Do</option>
+                                                                <option value="In Progress">In Progress</option>
+                                                                <option value="In Review">In Review</option>
+                                                                <option value="Done">Done</option>
+                                                            </select>
                                                         )}
                                                     </div>
                                                 </td>
 
-                                                {/* Due Date */}
+                                                {/* DUE DATE */}
                                                 <td className="px-5 py-4">
-                                                    <div
-                                                        className={`flex items-center gap-1.5 text-xs ${overdue
-                                                            ? "font-semibold text-red-600"
-                                                            : "text-[#71809b]"
-                                                            }`}
-                                                    >
-                                                        <CalendarDays size={14} />
-                                                        {formatDate(task.dueDate)}
-                                                        {overdue && (
-                                                            <span className="rounded bg-red-100 px-1 py-0.5 text-[10px] uppercase text-red-700">
-                                                                Overdue
-                                                            </span>
-                                                        )}
+                                                    <div className="flex items-center gap-1.5 text-xs text-[#58708f]">
+                                                        <CalendarDays size={14} className={isOverdue ? "text-red-500" : "text-gray-400"} />
+                                                        <span className={isOverdue ? "font-semibold text-red-500" : ""}>
+                                                            {formatDate(task.dueDate)}
+                                                        </span>
                                                     </div>
                                                 </td>
 
-                                                {/* Action */}
+                                                {/* ACTION */}
                                                 <td className="px-5 py-4 text-center">
                                                     <button
                                                         type="button"
@@ -911,32 +861,15 @@ const MyTasks = () => {
                                                             setSelectedTask(task);
                                                             setShowViewModal(true);
                                                         }}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#d3ddea] px-3 py-1.5 text-xs font-medium text-[#30415b] transition hover:border-[#2161f5] hover:bg-[#f5f8fc] hover:text-[#2161f5]"
+                                                        className="inline-flex items-center gap-1 rounded-lg border border-[#dfe5ed] bg-white px-2.5 py-1.5 text-xs font-medium text-[#40536e] transition hover:bg-gray-50 hover:text-[#07152d]"
                                                     >
+                                                        <Eye size={13} />
                                                         Open
-                                                        <ArrowRight size={13} />
                                                     </button>
                                                 </td>
                                             </tr>
                                         );
                                     })
-                                ) : (
-                                    <tr>
-                                        <td
-                                            colSpan="8"
-                                            className="px-5 py-14 text-center text-sm text-[#71809b]"
-                                        >
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <ListTodo size={32} className="text-[#94a3b8]" />
-                                                <p className="font-medium text-[#334155]">
-                                                    No tasks found
-                                                </p>
-                                                <p className="text-xs text-[#94a3b8]">
-                                                    Try clearing search or filter criteria.
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
                                 )}
                             </tbody>
                         </table>
@@ -944,94 +877,50 @@ const MyTasks = () => {
                 </section>
             )}
 
-            {/* =====================================================
-                BOARD VIEW (KANBAN)
-            ====================================================== */}
+            {/* BOARD VIEW */}
             {viewMode === "board" && (
-                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                        { title: "To Do", key: "Todo", border: "border-t-slate-400" },
-                        { title: "In Progress", key: "In Progress", border: "border-t-blue-500" },
-                        { title: "In Review", key: "In Review", border: "border-t-purple-500" },
-                        { title: "Done", key: "Done", border: "border-t-emerald-500" },
-                    ].map((col) => {
+                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {["Todo", "In Progress", "In Review", "Done"].map((colStatus) => {
                         const colTasks = filteredTasks.filter(
-                            (t) => normalizeStatus(t.status) === col.key
+                            (t) => normalizeStatus(t.status) === colStatus
                         );
 
                         return (
-                            <div
-                                key={col.title}
-                                className={`flex flex-col rounded-xl border border-[#dfe5ed] bg-[#f8fafc] p-3.5 shadow-sm border-t-4 ${col.border}`}
-                            >
+                            <div key={colStatus} className="rounded-xl border border-[#dfe5ed] bg-[#f8fafc] p-3.5">
                                 <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-[#1e293b]">
-                                        {col.title}
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#58708f]">
+                                        {colStatus}
                                     </h3>
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#64748b] shadow-xs">
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-[#40536e] shadow-sm">
                                         {colTasks.length}
                                     </span>
                                 </div>
 
                                 <div className="space-y-3">
-                                    {colTasks.length > 0 ? (
-                                        colTasks.map((task) => {
-                                            const taskId = task._id || task.id;
-                                            const overdue = isTaskOverdue(task);
+                                    {colTasks.map((task) => (
+                                        <div
+                                            key={task._id || task.id}
+                                            className="rounded-lg border border-[#dfe5ed] bg-white p-3.5 shadow-sm hover:shadow transition"
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="text-sm font-semibold text-[#07152d]">
+                                                    {task.taskTitle || task.title}
+                                                </p>
+                                                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getPriorityClass(task.priority)}`}>
+                                                    {task.priority || "Medium"}
+                                                </span>
+                                            </div>
 
-                                            return (
-                                                <div
-                                                    key={taskId}
-                                                    onClick={() => {
-                                                        setSelectedTask(task);
-                                                        setShowViewModal(true);
-                                                    }}
-                                                    className="cursor-pointer rounded-lg border border-[#e2e8f0] bg-white p-3.5 shadow-xs transition hover:border-[#2161f5]/50 hover:shadow-md"
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="truncate text-[11px] font-medium text-[#64748b]">
-                                                            {getProjectName(task)}
-                                                        </span>
-                                                        <span
-                                                            className={`rounded-full border px-2 py-0.2 text-[10px] font-semibold ${getPriorityClass(
-                                                                task.priority
-                                                            )}`}
-                                                        >
-                                                            {task.priority || "Medium"}
-                                                        </span>
-                                                    </div>
+                                            <p className="mt-2 text-xs text-gray-500 line-clamp-2">
+                                                {task.description || "No description"}
+                                            </p>
 
-                                                    <h4 className="mt-2 text-sm font-semibold text-[#0f172a]">
-                                                        {task.taskTitle || task.title || "Untitled"}
-                                                    </h4>
-
-                                                    {task.description && (
-                                                        <p className="mt-1 line-clamp-2 text-xs text-[#64748b]">
-                                                            {task.description}
-                                                        </p>
-                                                    )}
-
-                                                    <div className="mt-3 flex items-center justify-between border-t border-[#f1f5f9] pt-2.5 text-xs text-[#64748b]">
-                                                        <div
-                                                            className={`flex items-center gap-1 ${overdue ? "font-semibold text-red-500" : ""
-                                                                }`}
-                                                        >
-                                                            <CalendarDays size={13} />
-                                                            {formatDate(task.dueDate)}
-                                                        </div>
-
-                                                        <div className="text-[11px] font-medium text-[#475569]">
-                                                            {getAssignedName(task.assignedTo)}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="rounded-lg border border-dashed border-[#cbd5e1] p-6 text-center text-xs text-[#94a3b8]">
-                                            No tasks
+                                            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 text-[11px] text-gray-400">
+                                                <span>{getProjectName(task)}</span>
+                                                <span>{formatDate(task.dueDate)}</span>
+                                            </div>
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                         );
@@ -1039,140 +928,55 @@ const MyTasks = () => {
                 </div>
             )}
 
-            {/* =====================================================
-                VIEW TASK DETAILS MODAL
-            ====================================================== */}
+            {/* VIEW MODAL */}
             {showViewModal && selectedTask && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
-                            <div>
-                                <h2 className="text-xl font-bold text-[#1e293b]">
-                                    Task Details
-                                </h2>
-                                <p className="mt-0.5 text-xs text-[#64748b]">
-                                    View full information for this task
-                                </p>
-                            </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+                        <div className="flex items-start justify-between">
+                            <h2 className="text-lg font-bold text-[#07152d]">
+                                {selectedTask.taskTitle || selectedTask.title}
+                            </h2>
                             <button
-                                type="button"
                                 onClick={() => setShowViewModal(false)}
-                                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#64748b] transition hover:bg-[#f1f5f9] hover:text-[#1e293b]"
+                                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                             >
-                                <X size={20} />
+                                <X size={18} />
                             </button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="space-y-4 p-6">
+                        <div className="mt-4 space-y-3 text-xs sm:text-sm text-[#40536e]">
                             <div>
-                                <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                    Task Title
-                                </label>
-                                <p className="mt-1 text-base font-bold text-[#0f172a]">
-                                    {selectedTask.taskTitle || selectedTask.title || "Untitled Task"}
-                                </p>
+                                <span className="font-semibold text-gray-500">Project: </span>
+                                {getProjectName(selectedTask)}
                             </div>
-
                             <div>
-                                <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                    Description
-                                </label>
-                                <p className="mt-1 text-sm text-[#334155] whitespace-pre-wrap rounded-lg bg-[#f8fafc] p-3.5 border border-[#e2e8f0]">
-                                    {selectedTask.description || "No description provided."}
-                                </p>
+                                <span className="font-semibold text-gray-500">Assigned To: </span>
+                                {getAssignedName(selectedTask.assignedTo)}
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Project
-                                    </label>
-                                    <p className="mt-1 text-sm font-medium text-[#1e293b]">
-                                        {getProjectName(selectedTask)}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Assigned To
-                                    </label>
-                                    <p className="mt-1 text-sm font-medium text-[#1e293b]">
-                                        {getAssignedName(selectedTask.assignedTo)}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Priority
-                                    </label>
-                                    <div className="mt-1">
-                                        <span
-                                            className={`inline-block rounded-full border px-3 py-0.5 text-xs font-semibold ${getPriorityClass(
-                                                selectedTask.priority
-                                            )}`}
-                                        >
-                                            {selectedTask.priority || "Medium"}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Status
-                                    </label>
-                                    <div className="mt-1">
-                                        <span
-                                            className={`inline-block rounded-full border px-3 py-0.5 text-xs font-semibold ${getStatusClass(
-                                                selectedTask.status
-                                            )}`}
-                                        >
-                                            {normalizeStatus(selectedTask.status)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Start Date
-                                    </label>
-                                    <p className="mt-1 text-sm font-medium text-[#1e293b]">
-                                        {formatDate(selectedTask.startDate)}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                        Due Date
-                                    </label>
-                                    <p
-                                        className={`mt-1 text-sm font-medium ${isTaskOverdue(selectedTask)
-                                            ? "font-semibold text-red-600"
-                                            : "text-[#1e293b]"
-                                            }`}
-                                    >
-                                        {formatDate(selectedTask.dueDate)}
-                                    </p>
-                                </div>
+                            <div>
+                                <span className="font-semibold text-gray-500">Priority: </span>
+                                {selectedTask.priority || "Medium"}
                             </div>
-
-                            <div className="border-t border-[#e2e8f0] pt-3">
-                                <label className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">
-                                    Created By
-                                </label>
-                                <p className="mt-1 text-sm font-medium text-[#1e293b]">
-                                    {getCreatedByName(selectedTask.createdBy)}
+                            <div>
+                                <span className="font-semibold text-gray-500">Status: </span>
+                                {normalizeStatus(selectedTask.status)}
+                            </div>
+                            <div>
+                                <span className="font-semibold text-gray-500">Due Date: </span>
+                                {formatDate(selectedTask.dueDate)}
+                            </div>
+                            <div className="pt-2">
+                                <span className="font-semibold text-gray-500 block mb-1">Description: </span>
+                                <p className="rounded-lg bg-gray-50 p-3 text-gray-700">
+                                    {selectedTask.description || "No details provided."}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="flex justify-end border-t border-[#e2e8f0] px-6 py-4">
+                        <div className="mt-6 flex justify-end">
                             <button
-                                type="button"
                                 onClick={() => setShowViewModal(false)}
-                                className="rounded-lg bg-[#f1f5f9] px-5 py-2 text-sm font-semibold text-[#334155] transition hover:bg-[#e2e8f0]"
+                                className="rounded-lg bg-[#2161f5] px-4 py-2 text-xs font-semibold text-white hover:bg-blue-600"
                             >
                                 Close
                             </button>
