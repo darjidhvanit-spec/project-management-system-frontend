@@ -566,10 +566,12 @@ const Projects = () => {
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         setError("");
         setSuccess("");
 
         const isValid = validateForm();
+
         if (!isValid) {
             setError("Please fix the validation errors.");
             return;
@@ -578,7 +580,11 @@ const Projects = () => {
         try {
             setSubmitLoading(true);
 
+            // =====================================================
+            // GET LOGGED-IN USER
+            // =====================================================
             const userData = getLoggedInUser();
+
             if (!userData) {
                 setError("Please login first.");
                 return;
@@ -590,23 +596,45 @@ const Projects = () => {
                 userData?.userId ||
                 "";
 
-            const userRole = (userData?.role || "").toLowerCase();
-            if (userData?.role && userRole !== "manager" && userRole !== "admin") {
-                setError("Only Manager or Admin can perform this action.");
+            if (!userId) {
+                setError("Logged-in user ID not found.");
                 return;
             }
 
+            // =====================================================
+            // ROLE
+            // =====================================================
+            const userRole = String(userData?.role || "")
+                .trim()
+                .toLowerCase();
+
+            if (userRole !== "manager" && userRole !== "admin") {
+                setError("Only Manager or Admin can create a project.");
+                return;
+            }
+
+            // =====================================================
+            // CREATE PAYLOAD
+            // =====================================================
             const payload = {
                 projectName: formData.projectName.trim(),
                 description: formData.description.trim(),
                 startDate: formData.startDate,
                 endDate: formData.endDate,
-                priority: formData.priority,
-                status: formData.status,
-                createdBy: formData.createdBy || userId
+                priority: formData.priority || "Medium",
+                status: formData.status || "Planning",
+
+                // Always use logged-in user
+                createdBy: userId
             };
 
+            console.log("PROJECT PAYLOAD =>", payload);
+            console.log("LOGGED USER =>", userData);
+            console.log("USER ROLE =>", userRole);
+
+            // =====================================================
             // UPDATE PROJECT
+            // =====================================================
             if (editId) {
                 const updatePayload = {
                     id: editId,
@@ -616,6 +644,7 @@ const Projects = () => {
                 };
 
                 let response;
+
                 try {
                     response = await axios.put(
                         `${API_BASE_URL}/project/project_update`,
@@ -623,7 +652,10 @@ const Projects = () => {
                         API_HEADERS
                     );
                 } catch (putErr) {
-                    if (putErr.response?.status === 404 || putErr.response?.status === 405) {
+                    if (
+                        putErr.response?.status === 404 ||
+                        putErr.response?.status === 405
+                    ) {
                         response = await axios.post(
                             `${API_BASE_URL}/project/project_update`,
                             updatePayload,
@@ -634,60 +666,105 @@ const Projects = () => {
                     }
                 }
 
-                if (response?.data?.success !== false) {
+                if (response?.data?.success === true) {
                     setSuccess(
-                        response?.data?.message || "Project updated successfully."
+                        response?.data?.message ||
+                        "Project updated successfully."
                     );
+
                     setShowModal(false);
                     setEditId(null);
-                    setFormData(initialFormData);
+
+                    setFormData({
+                        ...initialFormData,
+                        createdBy: userId
+                    });
+
                     setFormErrors({});
-                    await fetchProjects(currentPage, perPage, search, priorityFilter, statusFilter);
+
+                    await fetchProjects(
+                        currentPage,
+                        perPage,
+                        search,
+                        priorityFilter,
+                        statusFilter
+                    );
+
                     return;
                 }
 
                 setError(
-                    response?.data?.message || "Unable to update project."
+                    response?.data?.message ||
+                    "Unable to update project."
                 );
+
                 return;
             }
 
+            // =====================================================
             // CREATE PROJECT
+            // =====================================================
             const response = await axios.post(
                 `${API_BASE_URL}/project/project_add`,
                 payload,
                 API_HEADERS
             );
 
-            if (response?.data?.success !== false) {
+            console.log("CREATE PROJECT RESPONSE =>", response.data);
+
+            if (response?.data?.success === true) {
                 setSuccess(
-                    response?.data?.message || "Project created successfully."
+                    response?.data?.message ||
+                    "Project created successfully."
                 );
+
                 setShowModal(false);
+
                 setFormData({
                     ...initialFormData,
                     createdBy: userId
                 });
+
                 setFormErrors({});
+
                 setCurrentPage(1);
-                await fetchProjects(1, perPage, search, priorityFilter, statusFilter);
+
+                await fetchProjects(
+                    1,
+                    perPage,
+                    search,
+                    priorityFilter,
+                    statusFilter
+                );
+
                 return;
             }
 
             setError(
-                response?.data?.message || "Unable to create project."
+                response?.data?.message ||
+                "Unable to create project."
             );
 
         } catch (err) {
             console.error("Project Save Error:", err);
+
             if (err.response) {
+                console.error("STATUS =>", err.response.status);
+                console.error("RESPONSE =>", err.response.data);
+
                 setError(
-                    err.response?.data?.message || "Operation failed."
+                    err.response?.data?.message ||
+                    "Operation failed."
                 );
             } else if (err.request) {
-                setError("Server is not responding. Please check backend server.");
+                setError(
+                    "Server is not responding. Please check backend server."
+                );
             } else {
-                setError(err.message || "Error saving project.");
+                setError(
+                    err.message ||
+                    "Error saving project."
+                );
             }
         } finally {
             setSubmitLoading(false);
