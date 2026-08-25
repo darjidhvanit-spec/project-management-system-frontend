@@ -1,5 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import axios from "axios";
+
 import {
   Plus,
   Search,
@@ -8,12 +14,30 @@ import {
   Trash2,
   CalendarDays,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 
 const Tasks = () => {
   // =====================================================
-  // INITIAL FORM DATA
+  // API
   // =====================================================
+
+  const API_BASE_URL =
+    "https://project-management-system-backend-2-qyqt.onrender.com";
+
+  const API_HEADERS = {
+    headers: {
+      "api-key": "projectmanagement",
+      "Content-Type": "application/json",
+    },
+  };
+
+  // =====================================================
+  // INITIAL FORM
+  // =====================================================
+
   const initialFormData = {
     taskTitle: "",
     description: "",
@@ -26,9 +50,6 @@ const Tasks = () => {
     createdBy: "",
   };
 
-  // =====================================================
-  // INITIAL VALIDATION
-  // =====================================================
   const initialErrors = {
     taskTitle: "",
     description: "",
@@ -44,185 +65,319 @@ const Tasks = () => {
   // =====================================================
   // STATES
   // =====================================================
+
   const [tasks, setTasks] = useState([]);
+
   const [projects, setProjects] = useState([]);
+
   const [users, setUsers] = useState([]);
 
-  const [createdByName, setCreatedByName] = useState("");
+  const [formData, setFormData] =
+    useState(initialFormData);
 
-  const [formData, setFormData] = useState(initialFormData);
+  const [errors, setErrors] =
+    useState(initialErrors);
 
-  const [errors, setErrors] = useState(initialErrors);
-
-  const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState(null);
-
-  const [search, setSearch] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const [error, setError] = useState("");
+  const [createdByName, setCreatedByName] =
+    useState("");
 
   // =====================================================
-  // VIEW DETAILS
+  // MODAL
   // =====================================================
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  
+
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [showViewModal, setShowViewModal] =
+    useState(false);
+
+  const [selectedTask, setSelectedTask] =
+    useState(null);
+
+  const [editId, setEditId] =
+    useState(null);
 
   // =====================================================
-  // API HEADERS
+  // SEARCH + FILTER
   // =====================================================
-  const API_HEADERS = {
-    headers: {
-      "api-key": "projectmanagement",
-      "Content-Type": "application/json",
-    },
-  };
+
+  const [search, setSearch] =
+    useState("");
+
+  const [priorityFilter, setPriorityFilter] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("");
+
+  // =====================================================
+  // PAGINATION
+  // =====================================================
+
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [perPage] =
+    useState(10);
+
+  const [totalRecords, setTotalRecords] =
+    useState(0);
+
+  const [totalPages, setTotalPages] =
+    useState(1);
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   // =====================================================
   // GET LOGGED USER
   // =====================================================
+
   const getLoggedUser = () => {
     try {
-      const storedUser = localStorage.getItem("pms:session");
+      const storedUser =
+        localStorage.getItem(
+          "pms:session"
+        );
 
       if (!storedUser) {
         return null;
       }
 
       return JSON.parse(storedUser);
+
     } catch (err) {
-      console.error("User Parse Error:", err);
+      console.error(
+        "User Parse Error:",
+        err
+      );
+
       return null;
     }
   };
 
   // =====================================================
-  // FETCH TASK LIST
+  // FETCH TASKS
   // =====================================================
-  const fetchTasks = useCallback(async (searchTerm = "") => {
-    try {
-      setLoading(true);
-      setError("");
 
-      const response = await axios.post(
-        "https://project-management-system-backend-2-qyqt.onrender.com/task/task_list",
-        {
-          search: searchTerm,
-        },
-        API_HEADERS
-      );
+  const fetchTasks = useCallback(
+    async (
+      page = currentPage,
+      searchTerm = search,
+      priority = priorityFilter,
+      status = statusFilter
+    ) => {
+      try {
+        setLoading(true);
+        setError("");
 
-      if (response.data?.success) {
-        const taskData = response.data?.data?.taskData;
+        const response =
+          await axios.post(
+            `${API_BASE_URL}/task/task_list`,
+            {
+              page: page,
 
-        setTasks(Array.isArray(taskData) ? taskData : []);
-      } else {
+              per_page: perPage,
+
+              taskTitle:
+                searchTerm.trim(),
+
+              priority: priority,
+
+              status: status,
+            },
+            API_HEADERS
+          );
+
+        if (response.data?.success) {
+          const responseData =
+            response.data?.data || {};
+
+          const taskData =
+            responseData.taskData;
+
+          const pagination =
+            responseData.pagination || {};
+
+          setTasks(
+            Array.isArray(taskData)
+              ? taskData
+              : []
+          );
+
+          setTotalRecords(
+            Number(
+              pagination.totalRecords || 0
+            )
+          );
+
+          setTotalPages(
+            Number(
+              pagination.totalPages || 1
+            )
+          );
+
+          setCurrentPage(
+            Number(
+              pagination.currentPage ||
+                page
+            )
+          );
+
+        } else {
+          setTasks([]);
+
+          setTotalRecords(0);
+
+          setTotalPages(1);
+
+          setError(
+            response.data?.message ||
+              "Unable to fetch task list."
+          );
+        }
+
+      } catch (err) {
+        console.error(
+          "Task List Error:",
+          err
+        );
+
         setTasks([]);
 
+        setTotalRecords(0);
+
+        setTotalPages(1);
+
         setError(
-          response.data?.message || "Unable to fetch task list."
+          err.response?.data?.message ||
+            "Error fetching task list."
         );
+
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Task List Error:", err);
-
-      setTasks([]);
-
-      setError(
-        err.response?.data?.message ||
-        "Error fetching task list."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [
+      currentPage,
+      search,
+      priorityFilter,
+      statusFilter,
+      perPage,
+    ]
+  );
 
   // =====================================================
-  // FETCH PROJECT LIST
+  // FETCH PROJECTS
   // =====================================================
-  const fetchProjects = useCallback(async () => {
-    try {
-      const response = await axios.post(
-        "https://project-management-system-backend-2-qyqt.onrender.com/project/project_list",
-        {},
-        API_HEADERS
-      );
 
-      if (response.data?.success) {
-        const projectData = response.data?.data?.projectData;
+  const fetchProjects =
+    useCallback(async () => {
+      try {
+        const response =
+          await axios.post(
+            `${API_BASE_URL}/project/project_list`,
+            {},
+            API_HEADERS
+          );
 
-        setProjects(
-          Array.isArray(projectData)
-            ? projectData
-            : []
+        if (response.data?.success) {
+          const projectData =
+            response.data?.data
+              ?.projectData;
+
+          setProjects(
+            Array.isArray(projectData)
+              ? projectData
+              : []
+          );
+        } else {
+          setProjects([]);
+        }
+
+      } catch (err) {
+        console.error(
+          "Project List Error:",
+          err
         );
-      } else {
+
         setProjects([]);
       }
-    } catch (err) {
-      console.error("Project List Error:", err);
-
-      setProjects([]);
-    }
-  }, []);
+    }, []);
 
   // =====================================================
   // FETCH USERS
-  // ONLY MEMBER / USER ROLE
   // =====================================================
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await axios.post(
-        "https://project-management-system-backend-2-qyqt.onrender.com/user/user_list",
-        {},
-        API_HEADERS
-      );
 
-      if (response.data?.success) {
-        const userData = response.data?.data;
-
-        if (Array.isArray(userData)) {
-          const memberUsers = userData.filter(
-            (user) => {
-              const userRole = (
-                user.role ||
-                user.userType ||
-                ""
-              ).toLowerCase();
-
-              return (
-                userRole === "member" ||
-                userRole === "user"
-              );
-            }
+  const fetchUsers =
+    useCallback(async () => {
+      try {
+        const response =
+          await axios.post(
+            `${API_BASE_URL}/user/user_list`,
+            {},
+            API_HEADERS
           );
 
-          setUsers(memberUsers);
+        if (response.data?.success) {
+          const userData =
+            response.data?.data;
+
+          if (Array.isArray(userData)) {
+            const memberUsers =
+              userData.filter((user) => {
+                const role =
+                  (
+                    user.role ||
+                    user.userType ||
+                    ""
+                  ).toLowerCase();
+
+                return (
+                  role === "member" ||
+                  role === "user"
+                );
+              });
+
+            setUsers(memberUsers);
+          } else {
+            setUsers([]);
+          }
+
         } else {
           setUsers([]);
         }
-      } else {
+
+      } catch (err) {
+        console.error(
+          "User List Error:",
+          err
+        );
+
         setUsers([]);
       }
-    } catch (err) {
-      console.error("User List Error:", err);
-
-      setUsers([]);
-    }
-  }, []);
+    }, []);
 
   // =====================================================
   // INITIAL LOAD
   // =====================================================
+
   useEffect(() => {
-    fetchTasks();
     fetchProjects();
     fetchUsers();
 
-    const loggedUser = getLoggedUser();
+    const loggedUser =
+      getLoggedUser();
 
     if (loggedUser) {
       const userId =
@@ -239,31 +394,46 @@ const Tasks = () => {
 
       setFormData((prev) => ({
         ...prev,
+
         createdBy: userId,
       }));
 
       setCreatedByName(userName);
     }
   }, [
-    fetchTasks,
     fetchProjects,
     fetchUsers,
   ]);
 
   // =====================================================
-  // SEARCH TASKS
+  // FETCH TASK WHEN SEARCH / FILTER / PAGE CHANGES
   // =====================================================
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchTasks(search);
-    }, 500);
+    const timer =
+      setTimeout(() => {
+        fetchTasks(
+          currentPage,
+          search,
+          priorityFilter,
+          statusFilter
+        );
+      }, 400);
 
-    return () => clearTimeout(timer);
-  }, [search, fetchTasks]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    currentPage,
+    search,
+    priorityFilter,
+    statusFilter,
+  ]);
 
   // =====================================================
-  // HANDLE INPUT CHANGE
+  // HANDLE INPUT
   // =====================================================
+
   const handleChange = (e) => {
     const {
       name,
@@ -272,167 +442,152 @@ const Tasks = () => {
 
     setFormData((prev) => ({
       ...prev,
+
       [name]: value,
     }));
 
-    // Clear field error when user changes value
     setErrors((prev) => ({
       ...prev,
+
       [name]: "",
     }));
 
     setError("");
 
-    // =================================================
-    // DATE CROSS VALIDATION
-    // =================================================
     if (
       name === "startDate" ||
       name === "dueDate"
     ) {
       setErrors((prev) => ({
         ...prev,
+
         startDate: "",
+
         dueDate: "",
       }));
     }
   };
 
   // =====================================================
-  // VALIDATE FORM
+  // VALIDATION
   // =====================================================
+
   const validateForm = () => {
     const newErrors = {
       ...initialErrors,
     };
 
     const taskTitle =
-      formData.taskTitle?.trim() || "";
+      formData.taskTitle.trim();
 
     const description =
-      formData.description?.trim() || "";
+      formData.description.trim();
 
-    // =================================================
-    // TASK TITLE
-    // =================================================
     if (!taskTitle) {
       newErrors.taskTitle =
         "Task title is required.";
-    } else if (taskTitle.length < 3) {
+    } else if (
+      taskTitle.length < 3
+    ) {
       newErrors.taskTitle =
         "Task title must be at least 3 characters.";
-    } else if (taskTitle.length > 100) {
+    } else if (
+      taskTitle.length > 100
+    ) {
       newErrors.taskTitle =
         "Task title cannot exceed 100 characters.";
     }
 
-    // =================================================
-    // DESCRIPTION
-    // =================================================
     if (!description) {
       newErrors.description =
         "Description is required.";
-    } else if (description.length < 10) {
+    } else if (
+      description.length < 10
+    ) {
       newErrors.description =
         "Description must be at least 10 characters.";
-    } else if (description.length > 500) {
+    } else if (
+      description.length > 500
+    ) {
       newErrors.description =
         "Description cannot exceed 500 characters.";
     }
 
-    // =================================================
-    // PROJECT
-    // =================================================
     if (!formData.projectId) {
       newErrors.projectId =
         "Please select a project.";
     }
 
-    // =================================================
-    // ASSIGNED TO
-    // =================================================
     if (!formData.assignedTo) {
       newErrors.assignedTo =
         "Please select a user member.";
     }
 
-    // =================================================
-    // PRIORITY
-    // =================================================
     if (!formData.priority) {
       newErrors.priority =
         "Please select priority.";
     }
 
-    // =================================================
-    // STATUS
-    // =================================================
     if (!formData.status) {
       newErrors.status =
         "Please select status.";
     }
 
-    // =================================================
-    // START DATE
-    // =================================================
     if (!formData.startDate) {
       newErrors.startDate =
         "Start date is required.";
     }
 
-    // =================================================
-    // DUE DATE
-    // =================================================
     if (!formData.dueDate) {
       newErrors.dueDate =
         "Due date is required.";
     }
 
-    // =================================================
-    // DATE COMPARISON
-    // =================================================
     if (
       formData.startDate &&
       formData.dueDate
     ) {
-      const startDate = new Date(
-        formData.startDate
-      );
+      const start =
+        new Date(
+          formData.startDate
+        );
 
-      const dueDate = new Date(
-        formData.dueDate
-      );
+      const due =
+        new Date(
+          formData.dueDate
+        );
 
-      if (dueDate < startDate) {
+      if (due < start) {
         newErrors.dueDate =
           "Due date cannot be before start date.";
       }
     }
 
-    // =================================================
-    // CREATED BY
-    // =================================================
     if (!formData.createdBy) {
       newErrors.createdBy =
-        "Created By user is required.";
+        "Created By is required.";
     }
 
     setErrors(newErrors);
 
-    // Return true if no validation errors
-    return !Object.values(newErrors).some(
-      (error) => error !== ""
-    );
+    return !Object.values(
+      newErrors
+    ).some(Boolean);
   };
 
   // =====================================================
-  // OPEN ADD TASK MODAL
+  // ADD TASK
   // =====================================================
+
   const handleAddTask = () => {
-    const loggedUser = getLoggedUser();
+    const loggedUser =
+      getLoggedUser();
 
     if (!loggedUser) {
-      setError("Please login first.");
+      setError(
+        "Please login first."
+      );
+
       return;
     }
 
@@ -456,10 +611,13 @@ const Tasks = () => {
 
     setFormData({
       ...initialFormData,
+
       createdBy: userId,
     });
 
-    setCreatedByName(userName);
+    setCreatedByName(
+      userName
+    );
 
     setShowModal(true);
   };
@@ -467,12 +625,16 @@ const Tasks = () => {
   // =====================================================
   // EDIT TASK
   // =====================================================
-  const handleEdit = (task) => {
-    const loggedUser = getLoggedUser();
 
-    setEditId(
-      task._id || task.id
-    );
+  const handleEdit = (task) => {
+    const loggedUser =
+      getLoggedUser();
+
+    const taskId =
+      task?._id ||
+      task?.id;
+
+    setEditId(taskId);
 
     setErrors(initialErrors);
 
@@ -480,57 +642,63 @@ const Tasks = () => {
 
     setFormData({
       taskTitle:
-        task.taskTitle || "",
+        task?.taskTitle || "",
 
       description:
-        task.description || "",
+        task?.description || "",
 
       projectId:
-        task.projectId?._id ||
-        task.projectId ||
+        task?.project?._id ||
+        task?.projectId?._id ||
+        task?.projectId ||
         "",
 
       assignedTo:
-        task.assignedTo?._id ||
-        task.assignedTo ||
+        task?.assignedTo?._id ||
+        task?.assignedTo ||
         "",
 
       priority:
-        task.priority || "Medium",
+        task?.priority ||
+        "Medium",
 
       startDate:
-        task.startDate
-          ? task.startDate.split("T")[0]
+        task?.startDate
+          ? task.startDate.split(
+              "T"
+            )[0]
           : "",
 
       dueDate:
-        task.dueDate
-          ? task.dueDate.split("T")[0]
+        task?.dueDate
+          ? task.dueDate.split(
+              "T"
+            )[0]
           : "",
 
       status:
-        task.status || "Todo",
+        task?.status ||
+        "Todo",
 
       createdBy:
-        task.createdBy?._id ||
-        task.createdBy ||
+        task?.createdBy?._id ||
+        task?.createdBy ||
         loggedUser?._id ||
         loggedUser?.id ||
         "",
     });
 
     const creatorName =
-      typeof task.createdBy === "object"
-        ? task.createdBy?.name ||
-        task.createdBy?.username ||
-        task.createdBy?.email
-        : loggedUser?.name ||
-        loggedUser?.username ||
-        loggedUser?.email ||
-        "Logged User";
+      task?.createdBy?.name ||
+      task?.createdBy?.username ||
+      task?.createdBy?.email ||
+      loggedUser?.name ||
+      loggedUser?.username ||
+      loggedUser?.email ||
+      "Logged User";
 
     setCreatedByName(
-      creatorName || "Logged User"
+      creatorName
     );
 
     setShowModal(true);
@@ -539,20 +707,34 @@ const Tasks = () => {
   // =====================================================
   // VIEW TASK
   // =====================================================
+
   const handleView = (task) => {
     setSelectedTask(task);
+
     setShowViewModal(true);
   };
 
   // =====================================================
-  // CLOSE CREATE / EDIT MODAL
+  // CLOSE VIEW
   // =====================================================
+
+  const handleCloseView = () => {
+    setShowViewModal(false);
+
+    setSelectedTask(null);
+  };
+
+  // =====================================================
+  // CLOSE FORM MODAL
+  // =====================================================
+
   const handleCloseModal = () => {
     if (submitting) {
       return;
     }
 
-    const loggedUser = getLoggedUser();
+    const loggedUser =
+      getLoggedUser();
 
     const userId =
       loggedUser?._id ||
@@ -566,28 +748,25 @@ const Tasks = () => {
 
     setErrors(initialErrors);
 
+    setError("");
+
     setFormData({
       ...initialFormData,
+
       createdBy: userId,
     });
-
-    setError("");
   };
 
   // =====================================================
-  // CREATE / UPDATE TASK
+  // SUBMIT
   // =====================================================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
 
-    // =================================================
-    // FRONTEND VALIDATION
-    // =================================================
-    const isValid = validateForm();
-
-    if (!isValid) {
+    if (!validateForm()) {
       return;
     }
 
@@ -596,6 +775,7 @@ const Tasks = () => {
 
       const payload = {
         ...formData,
+
         taskTitle:
           formData.taskTitle.trim(),
 
@@ -604,14 +784,18 @@ const Tasks = () => {
       };
 
       // =================================================
-      // UPDATE TASK
+      // UPDATE
       // =================================================
+
       if (editId) {
         const response =
           await axios.put(
-            "https://project-management-system-backend-2-qyqt.onrender.com/task/task_update",
+            `${API_BASE_URL}/task/task_update`,
             {
               id: editId,
+
+              taskId: editId,
+
               ...payload,
             },
             API_HEADERS
@@ -620,16 +804,22 @@ const Tasks = () => {
         if (response.data?.success) {
           alert(
             response.data?.message ||
-            "Task updated successfully!"
+              "Task updated successfully!"
           );
 
-          await fetchTasks(search);
-
           handleCloseModal();
+
+          await fetchTasks(
+            currentPage,
+            search,
+            priorityFilter,
+            statusFilter
+          );
+
         } else {
           setError(
             response.data?.message ||
-            "Failed to update task."
+              "Failed to update task."
           );
         }
 
@@ -637,11 +827,12 @@ const Tasks = () => {
       }
 
       // =================================================
-      // CREATE TASK
+      // CREATE
       // =================================================
+
       const response =
         await axios.post(
-          "https://project-management-system-backend-2-qyqt.onrender.com/task/task_add",
+          `${API_BASE_URL}/task/task_add`,
           payload,
           API_HEADERS
         );
@@ -649,18 +840,27 @@ const Tasks = () => {
       if (response.data?.success) {
         alert(
           response.data?.message ||
-          "Task created successfully!"
+            "Task created successfully!"
         );
 
-        await fetchTasks(search);
-
         handleCloseModal();
+
+        setCurrentPage(1);
+
+        await fetchTasks(
+          1,
+          search,
+          priorityFilter,
+          statusFilter
+        );
+
       } else {
         setError(
           response.data?.message ||
-          "Failed to create task."
+            "Failed to create task."
         );
       }
+
     } catch (err) {
       console.error(
         "Task Save Error:",
@@ -669,16 +869,18 @@ const Tasks = () => {
 
       setError(
         err.response?.data?.message ||
-        "Something went wrong while saving task."
+          "Something went wrong while saving task."
       );
+
     } finally {
       setSubmitting(false);
     }
   };
 
   // =====================================================
-  // DELETE TASK
+  // DELETE
   // =====================================================
+
   const handleDelete = async (id) => {
     if (
       !window.confirm(
@@ -691,11 +893,16 @@ const Tasks = () => {
     try {
       const response =
         await axios.delete(
-          "https://project-management-system-backend-2-qyqt.onrender.com/task/task_delete",
+          `${API_BASE_URL}/task/task_delete`,
           {
             ...API_HEADERS,
+
             data: {
-              id,
+              id: id,
+
+              taskId: id,
+
+              _id: id,
             },
           }
         );
@@ -703,16 +910,33 @@ const Tasks = () => {
       if (response.data?.success) {
         alert(
           response.data?.message ||
-          "Task deleted successfully!"
+            "Task deleted successfully!"
         );
 
-        await fetchTasks(search);
+        // If last item on page
+        if (
+          tasks.length === 1 &&
+          currentPage > 1
+        ) {
+          setCurrentPage(
+            currentPage - 1
+          );
+        } else {
+          await fetchTasks(
+            currentPage,
+            search,
+            priorityFilter,
+            statusFilter
+          );
+        }
+
       } else {
         alert(
           response.data?.message ||
-          "Failed to delete task."
+            "Failed to delete task."
         );
       }
+
     } catch (err) {
       console.error(
         "Delete Task Error:",
@@ -721,20 +945,87 @@ const Tasks = () => {
 
       alert(
         err.response?.data?.message ||
-        "Error deleting task."
+          "Error deleting task."
       );
     }
   };
 
   // =====================================================
-  // GET PROJECT NAME
+  // RESET FILTERS
   // =====================================================
+
+  const resetFilters = () => {
+    setSearch("");
+
+    setPriorityFilter("");
+
+    setStatusFilter("");
+
+    setCurrentPage(1);
+  };
+
+  // =====================================================
+  // PAGE NUMBERS
+  // =====================================================
+
+  const getPageNumbers = () => {
+    const pages = [];
+
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (
+        let i = 1;
+        i <= totalPages;
+        i++
+      ) {
+        pages.push(i);
+      }
+
+      return pages;
+    }
+
+    let start =
+      currentPage - 2;
+
+    let end =
+      currentPage + 2;
+
+    if (start < 1) {
+      start = 1;
+
+      end = 5;
+    }
+
+    if (end > totalPages) {
+      end = totalPages;
+
+      start =
+        totalPages - 4;
+    }
+
+    for (
+      let i = start;
+      i <= end;
+      i++
+    ) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
+  // =====================================================
+  // PROJECT NAME
+  // =====================================================
+
   const getProjectName = (
     projectData
   ) => {
     if (
-      typeof projectData === "object" &&
-      projectData !== null
+      projectData &&
+      typeof projectData ===
+        "object"
     ) {
       return (
         projectData.projectName ||
@@ -747,20 +1038,23 @@ const Tasks = () => {
       projects.find(
         (item) =>
           String(
-            item.id || item._id
+            item?._id ||
+              item?.id
           ) ===
           String(projectData)
       );
 
-    return project
-      ? project.projectName ||
-      project.name
-      : "Unknown Project";
+    return (
+      project?.projectName ||
+      project?.name ||
+      "Unknown Project"
+    );
   };
 
   // =====================================================
   // PRIORITY CLASS
   // =====================================================
+
   const getPriorityClass = (
     priority
   ) => {
@@ -782,6 +1076,7 @@ const Tasks = () => {
   // =====================================================
   // STATUS CLASS
   // =====================================================
+
   const getStatusClass = (
     status
   ) => {
@@ -804,24 +1099,28 @@ const Tasks = () => {
   };
 
   // =====================================================
-  // INPUT CLASS HELPER
+  // INPUT CLASS
   // =====================================================
+
   const getInputClass = (
     fieldName
   ) => {
     return `
-      w-full rounded-lg border px-4 text-sm
-      text-[#334155] outline-none transition
-      ${errors[fieldName]
-        ? "border-red-400 bg-red-50/30 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-        : "border-[#dbe2ea] bg-white focus:border-[#2161f5] focus:ring-2 focus:ring-[#2161f5]/10"
+      w-full rounded-lg border px-4
+      text-sm text-[#334155]
+      outline-none transition
+      ${
+        errors[fieldName]
+          ? "border-red-400 bg-red-50/30 focus:border-red-500"
+          : "border-[#dbe2ea] bg-white focus:border-[#2161f5]"
       }
     `;
   };
 
   // =====================================================
-  // ERROR MESSAGE COMPONENT
+  // FIELD ERROR
   // =====================================================
+
   const FieldError = ({
     message,
   }) => {
@@ -839,1010 +1138,1250 @@ const Tasks = () => {
   // =====================================================
   // RETURN
   // =====================================================
+
   return (
     <div className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
 
-      {/* ================================================= */}
-      {/* PAGE HEADER */}
-      {/* ================================================= */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
-      <div className="w-full">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1e293b]">
+            Tasks
+          </h1>
 
-          <div>
-            <h1 className="text-2xl font-bold text-[#1e293b]">
-              Tasks
-            </h1>
+          <p className="mt-1 text-sm text-[#64748b]">
+            Create, assign and track your tasks.
+          </p>
+        </div>
 
-            <p className="mt-1 text-sm text-[#64748b]">
-              Create, assign and track your tasks.
-            </p>
-          </div>
+        <button
+          type="button"
+          onClick={handleAddTask}
+          className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#2161f5] px-5 text-sm font-semibold text-white hover:bg-[#1954dc]"
+        >
+          <Plus size={19} />
+
+          New Task
+        </button>
+
+      </div>
+
+      {/* =================================================
+          ERROR
+      ================================================= */}
+
+      {error && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+
+          <span>{error}</span>
 
           <button
             type="button"
-            onClick={handleAddTask}
-            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#2161f5] px-5 text-sm font-semibold text-white transition hover:bg-[#1954dc]"
+            onClick={() =>
+              setError("")
+            }
           >
-            <Plus size={19} />
-            New Task
+            <X size={17} />
+          </button>
+
+        </div>
+      )}
+
+      {/* =================================================
+          TABLE CARD
+      ================================================= */}
+
+      <div className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+
+        {/* =================================================
+            SEARCH + FILTER
+        ================================================= */}
+
+        <div className="flex flex-col gap-3 border-b border-[#e2e8f0] p-4 lg:flex-row lg:items-center">
+
+          {/* SEARCH */}
+
+          <div className="relative w-full lg:max-w-sm">
+
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+            />
+
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(
+                  e.target.value
+                );
+
+                setCurrentPage(1);
+              }}
+              placeholder="Search task title..."
+              className="h-10 w-full rounded-lg border border-[#dbe2ea] pl-10 pr-4 text-sm outline-none focus:border-[#2161f5]"
+            />
+
+          </div>
+
+          {/* PRIORITY */}
+
+          <select
+            value={priorityFilter}
+            onChange={(e) => {
+              setPriorityFilter(
+                e.target.value
+              );
+
+              setCurrentPage(1);
+            }}
+            className="h-10 rounded-lg border border-[#dbe2ea] px-3 text-sm text-[#334155] outline-none focus:border-[#2161f5]"
+          >
+            <option value="">
+              All Priority
+            </option>
+
+            <option value="Low">
+              Low
+            </option>
+
+            <option value="Medium">
+              Medium
+            </option>
+
+            <option value="High">
+              High
+            </option>
+          </select>
+
+          {/* STATUS */}
+
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(
+                e.target.value
+              );
+
+              setCurrentPage(1);
+            }}
+            className="h-10 rounded-lg border border-[#dbe2ea] px-3 text-sm text-[#334155] outline-none focus:border-[#2161f5]"
+          >
+            <option value="">
+              All Status
+            </option>
+
+            <option value="Todo">
+              Todo
+            </option>
+
+            <option value="In Progress">
+              In Progress
+            </option>
+
+            <option value="Review">
+              Review
+            </option>
+
+            <option value="Completed">
+              Completed
+            </option>
+          </select>
+
+          {/* RESET */}
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="flex h-10 items-center justify-center gap-2 rounded-lg border border-[#dbe2ea] px-4 text-sm font-medium text-[#475569] hover:bg-gray-50"
+          >
+            <RotateCcw size={15} />
+
+            Reset
           </button>
 
         </div>
 
-        {/* ================================================= */}
-        {/* ERROR */}
-        {/* ================================================= */}
+        {/* =================================================
+            TABLE
+        ================================================= */}
 
-        {error && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            <span>{error}</span>
+        <div className="w-full overflow-x-auto">
 
-            <button
-              type="button"
-              onClick={() =>
-                setError("")
-              }
-            >
-              <X size={17} />
-            </button>
-          </div>
-        )}
+          <table className="w-full min-w-[1200px] text-left">
 
-        {/* ================================================= */}
-        {/* TABLE CARD */}
-        {/* ================================================= */}
+            <thead className="bg-[#f8fafc]">
 
-        <div className="w-full overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+              <tr>
 
-          {/* SEARCH */}
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Task
+                </th>
 
-          <div className="border-b border-[#e2e8f0] p-4">
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Description
+                </th>
 
-            <div className="relative w-full sm:max-w-sm">
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Project
+                </th>
 
-              <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
-              />
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Assigned To
+                </th>
 
-              <input
-                type="text"
-                value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                placeholder="Search tasks..."
-                className="h-10 w-full rounded-lg border border-[#dbe2ea] bg-white pl-10 pr-4 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-[#2161f5]/10"
-              />
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Priority
+                </th>
 
-            </div>
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Start Date
+                </th>
 
-          </div>
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Due Date
+                </th>
 
-          {/* ================================================= */}
-          {/* TABLE */}
-          {/* ================================================= */}
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Status
+                </th>
 
-          <div className="w-full overflow-x-auto">
+                <th className="px-5 py-4 text-xs font-semibold uppercase text-[#64748b]">
+                  Created By
+                </th>
 
-            <table className="w-full min-w-[1000px] text-left">
+                <th className="px-5 py-4 text-center text-xs font-semibold uppercase text-[#64748b]">
+                  Action
+                </th>
 
-              <thead className="bg-[#f8fafc]">
+              </tr>
+
+            </thead>
+
+            <tbody className="divide-y divide-[#e2e8f0]">
+
+              {loading ? (
+
+                <tr>
+                  <td
+                    colSpan="10"
+                    className="px-5 py-16 text-center text-sm text-[#64748b]"
+                  >
+                    Loading tasks...
+                  </td>
+                </tr>
+
+              ) : tasks.length > 0 ? (
+
+                tasks.map((task) => {
+
+                  const taskId =
+                    task?._id ||
+                    task?.id;
+
+                  return (
+                    <tr
+                      key={taskId}
+                      className="hover:bg-[#f8fafc]"
+                    >
+
+                      {/* TASK */}
+
+                      <td className="px-5 py-4">
+                        <span className="font-semibold text-[#1e293b]">
+                          {task.taskTitle}
+                        </span>
+                      </td>
+
+                      {/* DESCRIPTION */}
+
+                      <td className="max-w-[220px] px-5 py-4">
+                        <p className="truncate text-sm text-[#64748b]">
+                          {task.description}
+                        </p>
+                      </td>
+
+                      {/* PROJECT */}
+
+                      <td className="px-5 py-4">
+                        <span className="text-sm font-medium text-[#475569]">
+                          {getProjectName(
+                            task.project ||
+                              task.projectId
+                          )}
+                        </span>
+                      </td>
+
+                      {/* ASSIGNED */}
+
+                      <td className="px-5 py-4">
+                        <span className="text-sm text-[#475569]">
+                          {task.assignedTo?.name ||
+                            task.assignedTo?.username ||
+                            task.assignedTo?.email ||
+                            "-"}
+                        </span>
+                      </td>
+
+                      {/* PRIORITY */}
+
+                      <td className="px-5 py-4">
+
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getPriorityClass(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
+
+                      </td>
+
+                      {/* START */}
+
+                      <td className="px-5 py-4">
+
+                        <div className="flex items-center gap-2 text-sm text-[#475569]">
+
+                          <CalendarDays size={15} />
+
+                          {task.startDate
+                            ? task.startDate.split(
+                                "T"
+                              )[0]
+                            : "-"}
+
+                        </div>
+
+                      </td>
+
+                      {/* DUE */}
+
+                      <td className="px-5 py-4">
+
+                        <div className="flex items-center gap-2 text-sm text-[#475569]">
+
+                          <CalendarDays size={15} />
+
+                          {task.dueDate
+                            ? task.dueDate.split(
+                                "T"
+                              )[0]
+                            : "-"}
+
+                        </div>
+
+                      </td>
+
+                      {/* STATUS */}
+
+                      <td className="px-5 py-4">
+
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                            task.status
+                          )}`}
+                        >
+                          {task.status}
+                        </span>
+
+                      </td>
+
+                      {/* CREATED BY */}
+
+                      <td className="px-5 py-4">
+
+                        <span className="text-sm text-[#475569]">
+
+                          {task.createdBy?.name ||
+                            task.createdBy?.username ||
+                            task.createdBy?.email ||
+                            "-"}
+
+                        </span>
+
+                      </td>
+
+                      {/* ACTION */}
+
+                      <td className="px-5 py-4">
+
+                        <div className="flex justify-center gap-1">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleView(task)
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50"
+                            title="View"
+                          >
+                            <Eye size={17} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleEdit(task)
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#2161f5] hover:bg-blue-50"
+                            title="Edit"
+                          >
+                            <Pencil size={17} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDelete(
+                                taskId
+                              )
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
+                            title="Delete"
+                          >
+                            <Trash2 size={17} />
+                          </button>
+
+                        </div>
+
+                      </td>
+
+                    </tr>
+                  );
+                })
+
+              ) : (
 
                 <tr>
 
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Task
-                  </th>
+                  <td
+                    colSpan="10"
+                    className="px-5 py-16 text-center"
+                  >
 
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Description
-                  </th>
+                    <div className="text-sm font-medium text-[#64748b]">
+                      No tasks found.
+                    </div>
 
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Project
-                  </th>
+                    <p className="mt-1 text-xs text-[#94a3b8]">
+                      Try changing your search or filters.
+                    </p>
 
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Assigned To
-                  </th>
-
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Priority
-                  </th>
-
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Start Date
-                  </th>
-
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Due Date
-                  </th>
-
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Status
-                  </th>
-
-                  <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Created By
-                  </th>
-
-                  <th className="px-5 py-4 text-center text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                    Action
-                  </th>
+                  </td>
 
                 </tr>
 
-              </thead>
+              )}
 
-              <tbody className="divide-y divide-[#e2e8f0]">
+            </tbody>
 
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="10"
-                      className="px-5 py-16 text-center text-sm text-[#64748b]"
-                    >
-                      Loading tasks...
-                    </td>
-                  </tr>
-                ) : tasks.length > 0 ? (
-                  tasks.map((task) => {
+          </table>
 
-                    const taskId =
-                      task._id ||
-                      task.id;
+        </div>
 
-                    return (
-                      <tr
-                        key={taskId}
-                        className="transition hover:bg-[#f8fafc]"
-                      >
+        {/* =================================================
+            PAGINATION
+        ================================================= */}
 
-                        <td className="px-5 py-4">
-                          <div className="font-semibold text-[#1e293b]">
-                            {task.taskTitle}
-                          </div>
-                        </td>
+        <div className="flex flex-col gap-4 border-t border-[#e2e8f0] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
 
-                        <td className="max-w-[200px] px-5 py-4">
-                          <p className="truncate text-sm text-[#64748b]">
-                            {task.description}
-                          </p>
-                        </td>
+          {/* TOTAL */}
 
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-medium text-[#475569]">
-                            {getProjectName(
-                              task.projectId ||
-                              task.project
-                            )}
-                          </span>
-                        </td>
+          <div className="text-sm text-[#64748b]">
 
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-medium text-[#475569]">
-                            {typeof task.assignedTo ===
-                              "object"
-                              ? task.assignedTo?.name ||
-                              task.assignedTo?.username ||
-                              task.assignedTo?.email
-                              : task.assignedTo ||
-                              "-"}
-                          </span>
-                        </td>
+            Showing{" "}
 
-                        <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getPriorityClass(
-                              task.priority
-                            )}`}
-                          >
-                            {task.priority}
-                          </span>
-                        </td>
+            <span className="font-semibold text-[#334155]">
 
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 text-sm text-[#475569]">
-                            <CalendarDays
-                              size={15}
-                              className="text-[#64748b]"
-                            />
+              {totalRecords === 0
+                ? 0
+                : (currentPage - 1) *
+                    perPage +
+                  1}
 
-                            {task.startDate
-                              ? task.startDate.split(
-                                "T"
-                              )[0]
-                              : "-"}
-                          </div>
-                        </td>
+            </span>
 
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 text-sm text-[#475569]">
-                            <CalendarDays
-                              size={15}
-                              className="text-[#64748b]"
-                            />
+            {" "}to{" "}
 
-                            {task.dueDate
-                              ? task.dueDate.split(
-                                "T"
-                              )[0]
-                              : "-"}
-                          </div>
-                        </td>
+            <span className="font-semibold text-[#334155]">
 
-                        <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                              task.status
-                            )}`}
-                          >
-                            {task.status}
-                          </span>
-                        </td>
+              {Math.min(
+                currentPage *
+                  perPage,
+                totalRecords
+              )}
 
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-medium text-[#475569]">
-                            {typeof task.createdBy ===
-                              "object"
-                              ? task.createdBy?.name ||
-                              task.createdBy?.username ||
-                              task.createdBy?.email
-                              : task.createdBy ||
-                              "-"}
-                          </span>
-                        </td>
+            </span>
 
-                        <td className="px-5 py-4">
+            {" "}of{" "}
 
-                          <div className="flex items-center justify-center gap-1">
+            <span className="font-semibold text-[#334155]">
+              {totalRecords}
+            </span>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleView(task)
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-emerald-600 transition hover:bg-emerald-50"
-                              title="View Details"
-                            >
-                              <Eye size={17} />
-                            </button>
+            {" "}tasks
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleEdit(task)
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-[#2161f5] transition hover:bg-blue-50"
-                              title="Edit"
-                            >
-                              <Pencil size={17} />
-                            </button>
+          </div>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDelete(
-                                  taskId
-                                )
-                              }
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50"
-                              title="Delete"
-                            >
-                              <Trash2 size={17} />
-                            </button>
+          {/* BUTTONS */}
 
-                          </div>
+          <div className="flex items-center justify-center gap-1">
 
-                        </td>
+            {/* PREVIOUS */}
 
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="10"
-                      className="px-5 py-16 text-center"
-                    >
-                      <div className="text-sm font-medium text-[#64748b]">
-                        No tasks found.
-                      </div>
+            <button
+              type="button"
+              disabled={
+                currentPage === 1 ||
+                loading
+              }
+              onClick={() =>
+                setCurrentPage(
+                  (prev) =>
+                    Math.max(
+                      prev - 1,
+                      1
+                    )
+                )
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#dbe2ea] text-[#475569] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={17} />
+            </button>
 
-                      <p className="mt-1 text-xs text-[#94a3b8]">
-                        Click "New Task" to create your first task.
-                      </p>
-                    </td>
-                  </tr>
-                )}
+            {/* PAGE NUMBERS */}
 
-              </tbody>
+            {getPageNumbers().map(
+              (page) => (
+                <button
+                  key={page}
+                  type="button"
+                  disabled={loading}
+                  onClick={() =>
+                    setCurrentPage(
+                      page
+                    )
+                  }
+                  className={`h-9 min-w-9 rounded-lg px-3 text-sm font-medium ${
+                    currentPage ===
+                    page
+                      ? "bg-[#2161f5] text-white"
+                      : "border border-[#dbe2ea] text-[#475569] hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              )
+            )}
 
-            </table>
+            {/* NEXT */}
+
+            <button
+              type="button"
+              disabled={
+                currentPage ===
+                  totalPages ||
+                loading ||
+                totalRecords === 0
+              }
+              onClick={() =>
+                setCurrentPage(
+                  (prev) =>
+                    Math.min(
+                      prev + 1,
+                      totalPages
+                    )
+                )
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#dbe2ea] text-[#475569] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight size={17} />
+            </button>
 
           </div>
 
         </div>
 
-        {/* ================================================= */}
-        {/* VIEW TASK MODAL */}
-        {/* ================================================= */}
+      </div>
 
-        {showViewModal &&
-          selectedTask && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+      {/* =====================================================
+          ADD / EDIT MODAL
+      ===================================================== */}
 
-              <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-                <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
 
-                  <div>
-                    <h2 className="text-xl font-bold text-[#1e293b]">
-                      Task Details
-                    </h2>
+            <div className="flex items-center justify-between border-b pb-4">
 
-                    <p className="mt-1 text-xs text-[#64748b]">
-                      Detailed view of the task
-                    </p>
-                  </div>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                {editId
+                  ? "Edit Task"
+                  : "Add New Task"}
+              </h2>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowViewModal(false)
+              <button
+                type="button"
+                onClick={
+                  handleCloseModal
+                }
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-5 space-y-4"
+            >
+
+              {/* TASK TITLE */}
+
+              <div>
+
+                <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                  Task Title
+                </label>
+
+                <input
+                  type="text"
+                  name="taskTitle"
+                  value={
+                    formData.taskTitle
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  className={`${getInputClass(
+                    "taskTitle"
+                  )} h-10`}
+                />
+
+                <FieldError
+                  message={
+                    errors.taskTitle
+                  }
+                />
+
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div>
+
+                <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                  Description
+                </label>
+
+                <textarea
+                  name="description"
+                  rows={3}
+                  value={
+                    formData.description
+                  }
+                  onChange={
+                    handleChange
+                  }
+                  className={`${getInputClass(
+                    "description"
+                  )} py-2`}
+                />
+
+                <FieldError
+                  message={
+                    errors.description
+                  }
+                />
+
+              </div>
+
+              {/* PROJECT + ASSIGNED */}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                <div>
+
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Project
+                  </label>
+
+                  <select
+                    name="projectId"
+                    value={
+                      formData.projectId
                     }
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-[#64748b] transition hover:bg-[#f1f5f9]"
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "projectId"
+                    )} h-10`}
                   >
-                    <X size={21} />
-                  </button>
+
+                    <option value="">
+                      Select Project
+                    </option>
+
+                    {projects.map(
+                      (project) => (
+                        <option
+                          key={
+                            project._id ||
+                            project.id
+                          }
+                          value={
+                            project._id ||
+                            project.id
+                          }
+                        >
+                          {
+                            project.projectName
+                          }
+                        </option>
+                      )
+                    )}
+
+                  </select>
+
+                  <FieldError
+                    message={
+                      errors.projectId
+                    }
+                  />
 
                 </div>
 
-                <div className="space-y-4 p-6">
+                <div>
 
-                  <div>
-                    <label className="text-xs font-semibold uppercase text-[#64748b]">
-                      Task Title
-                    </label>
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Assigned To
+                  </label>
 
-                    <p className="text-base font-semibold text-[#1e293b]">
-                      {selectedTask.taskTitle}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold uppercase text-[#64748b]">
-                      Description
-                    </label>
-
-                    <p className="whitespace-pre-wrap rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-3 text-sm text-[#334155]">
-                      {selectedTask.description ||
-                        "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Project
-                      </label>
-
-                      <p className="text-sm font-medium text-[#1e293b]">
-                        {getProjectName(
-                          selectedTask.projectId ||
-                          selectedTask.project
-                        )}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Assigned To
-                      </label>
-
-                      <p className="text-sm font-medium text-[#1e293b]">
-                        {typeof selectedTask.assignedTo ===
-                          "object"
-                          ? selectedTask.assignedTo?.name ||
-                          selectedTask.assignedTo?.username ||
-                          selectedTask.assignedTo?.email
-                          : selectedTask.assignedTo ||
-                          "N/A"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Priority
-                      </label>
-
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getPriorityClass(
-                          selectedTask.priority
-                        )}`}
-                      >
-                        {selectedTask.priority}
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Status
-                      </label>
-
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                          selectedTask.status
-                        )}`}
-                      >
-                        {selectedTask.status}
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Start Date
-                      </label>
-
-                      <p className="text-sm font-medium text-[#1e293b]">
-                        {selectedTask.startDate
-                          ? selectedTask.startDate.split(
-                            "T"
-                          )[0]
-                          : "N/A"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold uppercase text-[#64748b]">
-                        Due Date
-                      </label>
-
-                      <p className="text-sm font-medium text-[#1e293b]">
-                        {selectedTask.dueDate
-                          ? selectedTask.dueDate.split(
-                            "T"
-                          )[0]
-                          : "N/A"}
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="border-t border-[#e2e8f0] pt-3">
-
-                    <label className="text-xs font-semibold uppercase text-[#64748b]">
-                      Created By
-                    </label>
-
-                    <p className="text-sm font-medium text-[#1e293b]">
-                      {typeof selectedTask.createdBy ===
-                        "object"
-                        ? selectedTask.createdBy?.name ||
-                        selectedTask.createdBy?.username ||
-                        selectedTask.createdBy?.email
-                        : selectedTask.createdBy ||
-                        "N/A"}
-                    </p>
-
-                  </div>
-
-                </div>
-
-                <div className="flex justify-end border-t border-[#e2e8f0] px-6 py-4">
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowViewModal(false)
+                  <select
+                    name="assignedTo"
+                    value={
+                      formData.assignedTo
                     }
-                    className="rounded-lg bg-[#f1f5f9] px-5 py-2 text-sm font-semibold text-[#334155] transition hover:bg-[#e2e8f0]"
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "assignedTo"
+                    )} h-10`}
                   >
-                    Close
-                  </button>
+
+                    <option value="">
+                      Select Member
+                    </option>
+
+                    {users.map(
+                      (user) => (
+                        <option
+                          key={
+                            user._id ||
+                            user.id
+                          }
+                          value={
+                            user._id ||
+                            user.id
+                          }
+                        >
+                          {user.name ||
+                            user.username ||
+                            user.email}
+                        </option>
+                      )
+                    )}
+
+                  </select>
+
+                  <FieldError
+                    message={
+                      errors.assignedTo
+                    }
+                  />
 
                 </div>
 
               </div>
 
-            </div>
-          )}
+              {/* PRIORITY + STATUS */}
 
-        {/* ================================================= */}
-        {/* CREATE / EDIT TASK MODAL */}
-        {/* ================================================= */}
-
-        {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-
-            <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-
-              {/* MODAL HEADER */}
-
-              <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                 <div>
 
-                  <h2 className="text-xl font-bold text-[#1e293b]">
-                    {editId
-                      ? "Update Task"
-                      : "Create New Task"}
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Priority
+                  </label>
+
+                  <select
+                    name="priority"
+                    value={
+                      formData.priority
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "priority"
+                    )} h-10`}
+                  >
+
+                    <option value="Low">
+                      Low
+                    </option>
+
+                    <option value="Medium">
+                      Medium
+                    </option>
+
+                    <option value="High">
+                      High
+                    </option>
+
+                  </select>
+
+                  <FieldError
+                    message={
+                      errors.priority
+                    }
+                  />
+
+                </div>
+
+                <div>
+
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Status
+                  </label>
+
+                  <select
+                    name="status"
+                    value={
+                      formData.status
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "status"
+                    )} h-10`}
+                  >
+
+                    <option value="Todo">
+                      Todo
+                    </option>
+
+                    <option value="In Progress">
+                      In Progress
+                    </option>
+
+                    <option value="Review">
+                      Review
+                    </option>
+
+                    <option value="Completed">
+                      Completed
+                    </option>
+
+                  </select>
+
+                  <FieldError
+                    message={
+                      errors.status
+                    }
+                  />
+
+                </div>
+
+              </div>
+
+              {/* DATES */}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                <div>
+
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Start Date
+                  </label>
+
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={
+                      formData.startDate
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "startDate"
+                    )} h-10`}
+                  />
+
+                  <FieldError
+                    message={
+                      errors.startDate
+                    }
+                  />
+
+                </div>
+
+                <div>
+
+                  <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                    Due Date
+                  </label>
+
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={
+                      formData.dueDate
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    className={`${getInputClass(
+                      "dueDate"
+                    )} h-10`}
+                  />
+
+                  <FieldError
+                    message={
+                      errors.dueDate
+                    }
+                  />
+
+                </div>
+
+              </div>
+
+              {/* CREATED BY */}
+
+              <div>
+
+                <label className="mb-1 block text-xs font-semibold text-[#475569]">
+                  Created By
+                </label>
+
+                <input
+                  type="text"
+                  disabled
+                  value={
+                    createdByName
+                  }
+                  className="h-10 w-full rounded-lg border border-[#dbe2ea] bg-gray-100 px-4 text-sm text-gray-500"
+                />
+
+              </div>
+
+              {/* ACTION */}
+
+              <div className="flex justify-end gap-3 border-t pt-4">
+
+                <button
+                  type="button"
+                  onClick={
+                    handleCloseModal
+                  }
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    submitting
+                  }
+                  className="rounded-lg bg-[#2161f5] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1954dc] disabled:opacity-50"
+                >
+                  {submitting
+                    ? "Saving..."
+                    : editId
+                    ? "Update Task"
+                    : "Create Task"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =====================================================
+          VIEW TASK MODAL
+      ===================================================== */}
+
+      {showViewModal &&
+        selectedTask && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+
+            <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+
+              {/* HEADER */}
+
+              <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
+
+                <div>
+
+                  <h2 className="text-lg font-bold text-[#1e293b]">
+                    Task Details
                   </h2>
 
-                  <p className="mt-1 text-sm text-[#64748b]">
-                    {editId
-                      ? "Update task information."
-                      : "Add a new task to your project."}
+                  <p className="mt-1 text-xs text-[#94a3b8]">
+                    View complete task information
                   </p>
 
                 </div>
 
                 <button
                   type="button"
-                  onClick={handleCloseModal}
-                  disabled={submitting}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[#64748b] transition hover:bg-[#f1f5f9]"
+                  onClick={
+                    handleCloseView
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 >
-                  <X size={21} />
+                  <X size={20} />
                 </button>
 
               </div>
 
-              {/* FORM */}
+              {/* BODY */}
 
-              <form
-                onSubmit={handleSubmit}
-                noValidate
-                className="space-y-5 p-6"
-              >
+              <div className="max-h-[70vh] overflow-y-auto p-6">
 
-                {/* ================================================= */}
-                {/* TASK TITLE */}
-                {/* ================================================= */}
+                {/* TITLE */}
 
-                <div>
+                <div className="mb-5">
 
-                  <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Task Title{" "}
-                    <span className="text-red-500">
-                      *
-                    </span>
-                  </label>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                    Task Title
+                  </p>
 
-                  <input
-                    type="text"
-                    name="taskTitle"
-                    value={formData.taskTitle}
-                    onChange={handleChange}
-                    placeholder="Enter task title"
-                    maxLength={100}
-                    className={`${getInputClass(
-                      "taskTitle"
-                    )} h-11`}
-                  />
+                  <h3 className="text-xl font-bold text-[#1e293b]">
+                    {selectedTask.taskTitle ||
+                      "-"}
 
-                  <FieldError
-                    message={errors.taskTitle}
-                  />
+                  </h3>
 
                 </div>
 
-                {/* ================================================= */}
                 {/* DESCRIPTION */}
-                {/* ================================================= */}
 
-                <div>
+                <div className="mb-5">
 
-                  <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Description{" "}
-                    <span className="text-red-500">
-                      *
-                    </span>
-                  </label>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                    Description
+                  </p>
 
-                  <textarea
-                    name="description"
-                    value={
-                      formData.description
-                    }
-                    onChange={handleChange}
-                    rows="4"
-                    maxLength={500}
-                    placeholder="Enter task description"
-                    className={`${getInputClass(
-                      "description"
-                    )} resize-none px-4 py-3`}
-                  />
-
-                  <div className="mt-1 flex justify-between">
-
-                    <FieldError
-                      message={
-                        errors.description
-                      }
-                    />
-
-                    <span className="ml-auto text-xs text-[#94a3b8]">
-                      {
-                        formData.description
-                          .length
-                      }
-                      /500
-                    </span>
-
-                  </div>
+                  <p className="rounded-lg bg-[#f8fafc] p-4 text-sm leading-6 text-[#475569]">
+                    {selectedTask.description ||
+                      "-"}
+                  </p>
 
                 </div>
 
-                {/* ================================================= */}
-                {/* PROJECT + ASSIGNED TO */}
-                {/* ================================================= */}
+                {/* GRID */}
 
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                   {/* PROJECT */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Project{" "}
-                      <span className="text-red-500">
-                        *
-                      </span>
-                    </label>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Project
+                    </p>
 
-                    <select
-                      name="projectId"
-                      value={
-                        formData.projectId
-                      }
-                      onChange={handleChange}
-                      className={`${getInputClass(
-                        "projectId"
-                      )} h-11 bg-white`}
-                    >
-
-                      <option value="">
-                        Select Project
-                      </option>
-
-                      {projects.map(
-                        (project) => {
-
-                          const id =
-                            project._id ||
-                            project.id;
-
-                          return (
-                            <option
-                              key={id}
-                              value={id}
-                            >
-                              {project.projectName ||
-                                project.name}
-                            </option>
-                          );
-                        }
+                    <p className="mt-1 text-sm font-semibold text-[#334155]">
+                      {getProjectName(
+                        selectedTask.project ||
+                          selectedTask.projectId
                       )}
-
-                    </select>
-
-                    <FieldError
-                      message={
-                        errors.projectId
-                      }
-                    />
+                    </p>
 
                   </div>
 
-                  {/* ASSIGNED TO */}
+                  {/* ASSIGNED */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Assigned To{" "}
-                      <span className="text-red-500">
-                        *
-                      </span>
-                    </label>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Assigned To
+                    </p>
 
-                    <select
-                      name="assignedTo"
-                      value={
-                        formData.assignedTo
-                      }
-                      onChange={handleChange}
-                      className={`${getInputClass(
-                        "assignedTo"
-                      )} h-11 bg-white`}
-                    >
-
-                      <option value="">
-                        Select User Member
-                      </option>
-
-                      {users.map(
-                        (user) => {
-
-                          const id =
-                            user._id ||
-                            user.id;
-
-                          return (
-                            <option
-                              key={id}
-                              value={id}
-                            >
-                              {user.name ||
-                                user.username ||
-                                user.email}
-                            </option>
-                          );
-                        }
-                      )}
-
-                    </select>
-
-                    <FieldError
-                      message={
-                        errors.assignedTo
-                      }
-                    />
+                    <p className="mt-1 text-sm font-semibold text-[#334155]">
+                      {selectedTask
+                        .assignedTo
+                        ?.name ||
+                        selectedTask
+                          .assignedTo
+                          ?.username ||
+                        selectedTask
+                          .assignedTo
+                          ?.email ||
+                        "-"}
+                    </p>
 
                   </div>
 
                   {/* PRIORITY */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Priority{" "}
-                      <span className="text-red-500">
-                        *
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Priority
+                    </p>
+
+                    <div className="mt-2">
+
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getPriorityClass(
+                          selectedTask.priority
+                        )}`}
+                      >
+                        {selectedTask.priority ||
+                          "-"}
                       </span>
-                    </label>
 
-                    <select
-                      name="priority"
-                      value={
-                        formData.priority
-                      }
-                      onChange={handleChange}
-                      className={`${getInputClass(
-                        "priority"
-                      )} h-11 bg-white`}
-                    >
-
-                      <option value="Low">
-                        Low
-                      </option>
-
-                      <option value="Medium">
-                        Medium
-                      </option>
-
-                      <option value="High">
-                        High
-                      </option>
-
-                    </select>
-
-                    <FieldError
-                      message={
-                        errors.priority
-                      }
-                    />
+                    </div>
 
                   </div>
 
                   {/* STATUS */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Status{" "}
-                      <span className="text-red-500">
-                        *
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Status
+                    </p>
+
+                    <div className="mt-2">
+
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                          selectedTask.status
+                        )}`}
+                      >
+                        {selectedTask.status ||
+                          "-"}
                       </span>
-                    </label>
 
-                    <select
-                      name="status"
-                      value={
-                        formData.status
-                      }
-                      onChange={handleChange}
-                      className={`${getInputClass(
-                        "status"
-                      )} h-11 bg-white`}
-                    >
-
-                      <option value="Todo">
-                        Todo
-                      </option>
-
-                      <option value="In Progress">
-                        In Progress
-                      </option>
-
-                      <option value="Review">
-                        Review
-                      </option>
-
-                      <option value="Completed">
-                        Completed
-                      </option>
-
-                    </select>
-
-                    <FieldError
-                      message={
-                        errors.status
-                      }
-                    />
+                    </div>
 
                   </div>
 
                   {/* START DATE */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Start Date{" "}
-                      <span className="text-red-500">
-                        *
-                      </span>
-                    </label>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Start Date
+                    </p>
 
-                    <div className="relative">
+                    <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#334155]">
 
                       <CalendarDays
-                        size={17}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+                        size={16}
                       />
 
-                      <input
-                        type="date"
-                        name="startDate"
-                        value={
-                          formData.startDate
-                        }
-                        onChange={handleChange}
-                        className={`${getInputClass(
-                          "startDate"
-                        )} h-11 pl-10`}
-                      />
+                      {selectedTask.startDate
+                        ? selectedTask.startDate.split(
+                            "T"
+                          )[0]
+                        : "-"}
 
                     </div>
-
-                    <FieldError
-                      message={
-                        errors.startDate
-                      }
-                    />
 
                   </div>
 
                   {/* DUE DATE */}
 
-                  <div>
+                  <div className="rounded-lg border border-[#e2e8f0] p-4">
 
-                    <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                      Due Date{" "}
-                      <span className="text-red-500">
-                        *
-                      </span>
-                    </label>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Due Date
+                    </p>
 
-                    <div className="relative">
+                    <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-[#334155]">
 
                       <CalendarDays
-                        size={17}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+                        size={16}
                       />
 
-                      <input
-                        type="date"
-                        name="dueDate"
-                        value={
-                          formData.dueDate
-                        }
-                        onChange={handleChange}
-                        min={
-                          formData.startDate ||
-                          undefined
-                        }
-                        className={`${getInputClass(
-                          "dueDate"
-                        )} h-11 pl-10`}
-                      />
+                      {selectedTask.dueDate
+                        ? selectedTask.dueDate.split(
+                            "T"
+                          )[0]
+                        : "-"}
 
                     </div>
 
-                    <FieldError
-                      message={
-                        errors.dueDate
-                      }
-                    />
+                  </div>
+
+                  {/* CREATED BY */}
+
+                  <div className="rounded-lg border border-[#e2e8f0] p-4 sm:col-span-2">
+
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">
+                      Created By
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-[#334155]">
+                      {selectedTask
+                        .createdBy
+                        ?.name ||
+                        selectedTask
+                          .createdBy
+                          ?.username ||
+                        selectedTask
+                          .createdBy
+                          ?.email ||
+                        "-"}
+                    </p>
 
                   </div>
 
                 </div>
 
-                {/* ================================================= */}
-                {/* CREATED BY */}
-                {/* ================================================= */}
+              </div>
 
-                <div>
+              {/* FOOTER */}
 
-                  <label className="mb-2 block text-sm font-semibold text-[#334155]">
-                    Created By{" "}
-                    <span className="text-red-500">
-                      *
-                    </span>
-                  </label>
+              <div className="flex justify-end border-t border-[#e2e8f0] px-6 py-4">
 
-                  <input
-                    type="text"
-                    value={createdByName}
-                    readOnly
-                    disabled
-                    className="h-11 w-full cursor-not-allowed rounded-lg border border-[#dbe2ea] bg-gray-100 px-4 text-sm font-medium text-gray-600 outline-none"
-                  />
+                <button
+                  type="button"
+                  onClick={
+                    handleCloseView
+                  }
+                  className="rounded-lg border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Close
+                </button>
 
-                  <FieldError
-                    message={
-                      errors.createdBy
-                    }
-                  />
-
-                </div>
-
-                {/* ================================================= */}
-                {/* FORM ACTIONS */}
-                {/* ================================================= */}
-
-                <div className="flex justify-end gap-3 border-t border-[#e2e8f0] pt-5">
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleCloseModal
-                    }
-                    disabled={submitting}
-                    className="rounded-lg border border-[#dbe2ea] px-5 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex min-w-[140px] items-center justify-center rounded-lg bg-[#2161f5] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1954dc] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {submitting
-                      ? "Saving..."
-                      : editId
-                        ? "Update Task"
-                        : "Create Task"}
-                  </button>
-
-                </div>
-
-              </form>
+              </div>
 
             </div>
 
           </div>
         )}
 
-      </div>
     </div>
   );
 };
