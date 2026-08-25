@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+
 import {
     LayoutDashboard,
     Folder,
@@ -8,6 +9,8 @@ import {
     Users,
     LogOut,
     X,
+    UserCircle,
+    CheckCircle2,
 } from "lucide-react";
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -16,11 +19,17 @@ const Sidebar = ({ isOpen, onClose }) => {
     const [user, setUser] = useState({
         name: "User",
         role: "Member",
+        email: "",
     });
 
-    // ==========================================
+    // =====================================================
+    // LOGOUT MODAL STATE
+    // =====================================================
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    // =====================================================
     // GET LOGGED-IN USER
-    // ==========================================
+    // =====================================================
     useEffect(() => {
         const getLoggedInUser = () => {
             try {
@@ -44,11 +53,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                         loggedUser?.name ||
                         loggedUser?.fullName ||
                         loggedUser?.userName ||
+                        loggedUser?.username ||
                         "User",
 
                     role:
                         loggedUser?.role ||
                         "Member",
+
+                    email:
+                        loggedUser?.email ||
+                        "",
                 });
             } catch (error) {
                 console.error(
@@ -73,18 +87,20 @@ const Sidebar = ({ isOpen, onClose }) => {
         };
     }, []);
 
-    // ==========================================
+    // =====================================================
     // NORMALIZE ROLE
-    // ==========================================
+    // =====================================================
     const normalizedRole = String(user.role || "")
         .trim()
         .toLowerCase();
 
-    // ==========================================
+    // =====================================================
     // USER INITIALS
-    // ==========================================
+    // =====================================================
     const getInitials = (name) => {
-        if (!name) return "US";
+        if (!name) {
+            return "US";
+        }
 
         const parts = name
             .trim()
@@ -99,9 +115,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             .toUpperCase();
     };
 
-    // ==========================================
+    // =====================================================
     // PORTAL NAME
-    // ==========================================
+    // =====================================================
     const getPortalName = () => {
         switch (normalizedRole) {
             case "admin":
@@ -118,13 +134,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         }
     };
 
-    // ==========================================
+    // =====================================================
     // ROLE BASED MENU
-    // ==========================================
+    // =====================================================
     const getMenuItems = () => {
-        // --------------------------------------
-        // ADMIN MENU (ઈમેજ મુજબ)
-        // --------------------------------------
+
+        // =================================================
+        // ADMIN
+        // =================================================
         if (normalizedRole === "admin") {
             return [
                 {
@@ -147,12 +164,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                     path: "/manage-tasks",
                     icon: ClipboardCheck,
                 },
+                {
+                    name: "Profile",
+                    path: "/profile",
+                    icon: UserCircle,
+                },
             ];
         }
 
-        // --------------------------------------
-        // MANAGER MENU
-        // --------------------------------------
+        // =================================================
+        // MANAGER
+        // =================================================
         if (normalizedRole === "manager") {
             return [
                 {
@@ -170,12 +192,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                     path: "/tasks",
                     icon: ClipboardCheck,
                 },
+                {
+                    name: "Profile",
+                    path: "/profile",
+                    icon: UserCircle,
+                },
             ];
         }
 
-        // --------------------------------------
-        // MEMBER MENU
-        // --------------------------------------
+        // =================================================
+        // MEMBER
+        // =================================================
         if (normalizedRole === "member") {
             return [
                 {
@@ -188,47 +215,80 @@ const Sidebar = ({ isOpen, onClose }) => {
                     path: "/my-tasks",
                     icon: ListTodo,
                 },
+                {
+                    name: "Profile",
+                    path: "/profile",
+                    icon: UserCircle,
+                },
             ];
         }
 
-        // --------------------------------------
-        // DEFAULT MENU
-        // --------------------------------------
+        // =================================================
+        // DEFAULT
+        // =================================================
         return [
             {
                 name: "Dashboard",
                 path: "/dashboard",
                 icon: LayoutDashboard,
             },
+            {
+                name: "Profile",
+                path: "/profile",
+                icon: UserCircle,
+            },
         ];
     };
 
     const menuItems = getMenuItems();
 
-    // ==========================================
-    // LOGOUT
-    // ==========================================
+    // =====================================================
+    // LOGOUT - OPEN MODAL
+    // =====================================================
     const handleLogout = () => {
+        setShowLogoutModal(true);
+    };
+
+    // =====================================================
+    // CONFIRM LOGOUT
+    // =====================================================
+    const confirmLogout = () => {
+        // Remove authentication/session data
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         localStorage.removeItem("pms:session");
 
+        // Close modal
+        setShowLogoutModal(false);
+
+        // Redirect to login
         navigate("/login", {
             replace: true,
         });
     };
 
+    // =====================================================
+    // CANCEL LOGOUT
+    // =====================================================
+    const cancelLogout = () => {
+        setShowLogoutModal(false);
+    };
+
     return (
         <>
-            {/* MOBILE OVERLAY */}
+            {/* =================================================
+                MOBILE OVERLAY
+            ================================================= */}
             {isOpen && (
                 <div
                     onClick={onClose}
-                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs lg:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
                 />
             )}
 
-            {/* SIDEBAR */}
+            {/* =================================================
+                SIDEBAR
+            ================================================= */}
             <aside
                 className={`
                     fixed
@@ -247,23 +307,30 @@ const Sidebar = ({ isOpen, onClose }) => {
                     lg:z-auto
                     lg:shrink-0
 
-                    ${isOpen
-                        ? "w-[260px] translate-x-0"
-                        : "-translate-x-full lg:w-0 lg:overflow-hidden lg:translate-x-0"
+                    ${
+                        isOpen
+                            ? "w-[260px] translate-x-0"
+                            : "-translate-x-full lg:w-0 lg:overflow-hidden lg:translate-x-0"
                     }
                 `}
             >
-                <div className="flex h-full w-[260px] flex-col min-h-0">
-                    {/* USER PROFILE */}
+                <div className="flex h-full w-[260px] min-h-0 flex-col">
+
+                    {/* =================================================
+                        USER PROFILE HEADER
+                    ================================================= */}
                     <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#293142] px-5">
-                        <div className="flex items-center gap-3 min-w-0">
+
+                        <div className="flex min-w-0 items-center gap-3">
+
                             {/* Avatar */}
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2161f5] text-sm font-bold text-white shadow-xs">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#2161f5] text-sm font-bold text-white shadow-sm">
                                 {getInitials(user.name)}
                             </div>
 
                             {/* User Details */}
                             <div className="min-w-0 flex-1">
+
                                 <h2 className="truncate text-sm font-semibold leading-tight text-white">
                                     {user.name}
                                 </h2>
@@ -271,6 +338,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <p className="mt-0.5 truncate text-xs text-[#91a0b9]">
                                     {getPortalName()}
                                 </p>
+
                             </div>
                         </div>
 
@@ -278,21 +346,27 @@ const Sidebar = ({ isOpen, onClose }) => {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="rounded-lg p-1.5 text-[#91a0b9] hover:bg-[#1b2536] hover:text-white lg:hidden cursor-pointer"
+                            className="cursor-pointer rounded-lg p-1.5 text-[#91a0b9] hover:bg-[#1b2536] hover:text-white lg:hidden"
                             aria-label="Close sidebar"
                         >
                             <X size={18} />
                         </button>
+
                     </div>
 
-                    {/* MENU */}
+                    {/* =================================================
+                        MENU
+                    ================================================= */}
                     <div className="flex-1 overflow-y-auto px-3.5 py-4">
+
                         <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#71809b]">
                             Menu
                         </p>
 
                         <nav className="space-y-1.5">
+
                             {menuItems.map((item) => {
+
                                 const Icon = item.icon;
 
                                 return (
@@ -300,15 +374,25 @@ const Sidebar = ({ isOpen, onClose }) => {
                                         key={item.name}
                                         to={item.path}
                                         onClick={() => {
-                                            if (window.innerWidth < 1024) {
+                                            if (
+                                                window.innerWidth < 1024
+                                            ) {
                                                 onClose();
                                             }
                                         }}
                                         className={({ isActive }) =>
-                                            `flex h-11 items-center rounded-lg px-3.5 text-sm font-medium transition-all duration-200 ${isActive
-                                                ? "bg-[#2161f5] text-white shadow-xs"
-                                                : "text-[#91a0b9] hover:bg-[#1b2536] hover:text-white"
-                                            }`
+                                            `
+                                            flex h-11 items-center
+                                            rounded-lg px-3.5
+                                            text-sm font-medium
+                                            transition-all duration-200
+
+                                            ${
+                                                isActive
+                                                    ? "bg-[#2161f5] text-white shadow-sm"
+                                                    : "text-[#91a0b9] hover:bg-[#1b2536] hover:text-white"
+                                            }
+                                            `
                                         }
                                     >
                                         {({ isActive }) => (
@@ -331,15 +415,19 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     </NavLink>
                                 );
                             })}
+
                         </nav>
                     </div>
 
-                    {/* LOGOUT */}
+                    {/* =================================================
+                        LOGOUT BUTTON
+                    ================================================= */}
                     <div className="shrink-0 border-t border-[#293142] p-3.5">
+
                         <button
                             type="button"
                             onClick={handleLogout}
-                            className="flex h-11 w-full items-center justify-center rounded-lg bg-[#e30613] text-sm font-semibold text-white transition-all duration-200 hover:bg-[#c90511] active:scale-[0.98] cursor-pointer shadow-xs"
+                            className="flex h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[#e30613] text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#c90511] active:scale-[0.98]"
                         >
                             <LogOut
                                 size={18}
@@ -351,11 +439,61 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 Logout
                             </span>
                         </button>
+
                     </div>
+
                 </div>
             </aside>
+
+            {/* =========================================================
+                LOGOUT SUCCESS MODAL
+            ========================================================= */}
+            {showLogoutModal && (
+                <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+                    onClick={cancelLogout}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+
+                        {/* Success Icon */}
+                        <div className="flex justify-center">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                                <CheckCircle2
+                                    size={38}
+                                    strokeWidth={2}
+                                    className="text-green-600"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <h2 className="mt-4 text-center text-xl font-bold text-gray-800">
+                            Logout Successfully
+                        </h2>
+
+                        {/* Message */}
+                        <p className="mt-2 text-center text-sm leading-6 text-gray-500">
+                            You have been successfully logged out
+                            from your account.
+                        </p>
+
+                        {/* OK Button */}
+                        <button
+                            type="button"
+                            onClick={confirmLogout}
+                            className="mt-6 w-full cursor-pointer rounded-lg bg-[#2161f5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1852d6] active:scale-[0.98]"
+                        >
+                            OK
+                        </button>
+
+                    </div>
+                </div>
+            )}
         </>
     );
 };
 
-export default Sidebar;  
+export default Sidebar;

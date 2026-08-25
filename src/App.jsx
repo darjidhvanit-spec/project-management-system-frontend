@@ -18,6 +18,7 @@ import ManageUsers from "./pages/ManageUsers";
 
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import Profile from "./pages/Profile";
 
 // =========================
 // Protected Route Wrapper
@@ -119,6 +120,7 @@ const App = () => {
           {/* Manager Routes */}
           <Route path="/projects" element={<Projects />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/profile" element={<Profile/>}/>
 
           {/* Member Routes */}
           <Route path="/dashboard-member" element={<DashboardMember />} />
