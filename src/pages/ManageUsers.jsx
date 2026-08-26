@@ -131,7 +131,7 @@ const ManageUsers = () => {
         name: "",
         email: "",
         password: "",
-        role: "member",
+        role: "Member",
     });
     const [formErrors, setFormErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
@@ -383,7 +383,7 @@ const ManageUsers = () => {
             name: "",
             email: "",
             password: "",
-            role: "member",
+            role: "Member",
         });
         setFormErrors({});
         setShowPassword(false);
@@ -458,7 +458,7 @@ const ManageUsers = () => {
             name: user.name || "",
             email: user.email || "",
             password: "",
-            role: (user.role || "member").toLowerCase(),
+            role: (user.role || "Member").toLowerCase(),
         });
         setFormErrors({});
         setShowPassword(false);
