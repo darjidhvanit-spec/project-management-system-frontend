@@ -846,11 +846,10 @@ const Profile = () => {
                                         onChange={handleChange}
                                         placeholder="Enter your name"
                                         disabled={loading}
-                                        className={`w-full rounded-lg border ${
-                                            errors.name
+                                        className={`w-full rounded-lg border ${errors.name
                                                 ? "border-red-400"
                                                 : "border-[#e2e8f0]"
-                                        } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
+                                            } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
                                     />
 
                                 </div>
@@ -884,11 +883,10 @@ const Profile = () => {
                                         onChange={handleChange}
                                         placeholder="Enter your email"
                                         disabled={loading}
-                                        className={`w-full rounded-lg border ${
-                                            errors.email
+                                        className={`w-full rounded-lg border ${errors.email
                                                 ? "border-red-400"
                                                 : "border-[#e2e8f0]"
-                                        } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
+                                            } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
                                     />
 
                                 </div>
@@ -925,11 +923,10 @@ const Profile = () => {
                                         onChange={handleChange}
                                         placeholder="Enter new password"
                                         disabled={loading}
-                                        className={`w-full rounded-lg border ${
-                                            errors.password
+                                        className={`w-full rounded-lg border ${errors.password
                                                 ? "border-red-400"
                                                 : "border-[#e2e8f0]"
-                                        } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
+                                            } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
                                     />
 
                                 </div>
@@ -965,11 +962,10 @@ const Profile = () => {
                                         value={formData.role}
                                         onChange={handleChange}
                                         disabled={loading}
-                                        className={`w-full appearance-none rounded-lg border ${
-                                            errors.role
+                                        className={`w-full appearance-none rounded-lg border ${errors.role
                                                 ? "border-red-400"
                                                 : "border-[#e2e8f0]"
-                                        } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
+                                            } bg-white py-2.5 pl-10 pr-3 text-sm text-[#334155] outline-none transition focus:border-[#2161f5] focus:ring-2 focus:ring-blue-100 disabled:bg-[#f8fafc]`}
                                     >
                                         <option value="Admin">
                                             Admin
@@ -1000,11 +996,10 @@ const Profile = () => {
                             {message.text && (
 
                                 <div
-                                    className={`rounded-lg px-4 py-3 text-sm ${
-                                        message.type === "success"
+                                    className={`rounded-lg px-4 py-3 text-sm ${message.type === "success"
                                             ? "bg-green-50 text-green-700"
                                             : "bg-red-50 text-red-700"
-                                    }`}
+                                        }`}
                                 >
                                     {message.text}
                                 </div>
