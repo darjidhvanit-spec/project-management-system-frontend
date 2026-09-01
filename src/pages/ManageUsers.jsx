@@ -623,8 +623,8 @@ const ManageUsers = () => {
             {alert.message && (
                 <div
                     className={`mb-6 flex items-center justify-between rounded-xl border p-4 text-sm font-medium transition-all ${alert.type === "success"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                            : "border-red-200 bg-red-50 text-red-800"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-red-200 bg-red-50 text-red-800"
                         }`}
                 >
                     <div className="flex items-center gap-2.5">
@@ -677,8 +677,8 @@ const ManageUsers = () => {
                 <div
                     onClick={() => setRoleFilter("all")}
                     className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-xs transition-all hover:shadow-sm ${roleFilter === "all"
-                            ? "border-slate-300"
-                            : "border-slate-200/80 hover:border-slate-300"
+                        ? "border-slate-300"
+                        : "border-slate-200/80 hover:border-slate-300"
                         }`}
                 >
                     <div className="flex items-start justify-between">
@@ -703,8 +703,8 @@ const ManageUsers = () => {
                 <div
                     onClick={() => setRoleFilter(roleFilter === "admin" ? "all" : "admin")}
                     className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-xs transition-all hover:shadow-sm ${roleFilter === "admin"
-                            ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
-                            : "border-slate-200/80 hover:border-slate-300"
+                        ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
+                        : "border-slate-200/80 hover:border-slate-300"
                         }`}
                 >
                     <div className="flex items-start justify-between">
@@ -731,8 +731,8 @@ const ManageUsers = () => {
                 <div
                     onClick={() => setRoleFilter(roleFilter === "manager" ? "all" : "manager")}
                     className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-xs transition-all hover:shadow-sm ${roleFilter === "manager"
-                            ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
-                            : "border-slate-200/80 hover:border-slate-300"
+                        ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
+                        : "border-slate-200/80 hover:border-slate-300"
                         }`}
                 >
                     <div className="flex items-start justify-between">
@@ -759,8 +759,8 @@ const ManageUsers = () => {
                 <div
                     onClick={() => setRoleFilter(roleFilter === "member" ? "all" : "member")}
                     className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-xs transition-all hover:shadow-sm ${roleFilter === "member"
-                            ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
-                            : "border-slate-200/80 hover:border-slate-300"
+                        ? "border-[#3b82f6] ring-2 ring-[#3b82f6]/20 bg-blue-50/20"
+                        : "border-slate-200/80 hover:border-slate-300"
                         }`}
                 >
                     <div className="flex items-start justify-between">
@@ -1111,8 +1111,8 @@ const ManageUsers = () => {
                                     }
                                     placeholder="e.g. Riya Shah"
                                     className={`mt-1.5 h-11 w-full rounded-xl border bg-white px-4 text-sm text-slate-800 placeholder-slate-400 transition focus:outline-hidden ${formErrors.name
-                                            ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
-                                            : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
+                                        : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                         }`}
                                 />
                                 {formErrors.name && (
@@ -1135,8 +1135,8 @@ const ManageUsers = () => {
                                     }
                                     placeholder="name@company.com"
                                     className={`mt-1.5 h-11 w-full rounded-xl border bg-white px-4 text-sm text-slate-800 placeholder-slate-400 transition focus:outline-hidden ${formErrors.email
-                                            ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
-                                            : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
+                                        : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                         }`}
                                 />
                                 {formErrors.email && (
@@ -1163,8 +1163,8 @@ const ManageUsers = () => {
                                         }
                                         placeholder="Choose a password"
                                         className={`h-11 w-full rounded-xl border bg-white pl-4 pr-11 text-sm text-slate-800 placeholder-slate-400 transition focus:outline-hidden ${formErrors.password
-                                                ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
-                                                : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                            ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
+                                            : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                             }`}
                                     />
                                     <button
@@ -1198,15 +1198,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "manager" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "manager"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "manager"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "manager" && (
@@ -1228,15 +1228,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "admin" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "admin"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "admin"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "admin" && (
@@ -1258,15 +1258,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "member" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "member"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "member"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "member" && (
@@ -1342,8 +1342,8 @@ const ManageUsers = () => {
                                         setFormData({ ...formData, name: e.target.value })
                                     }
                                     className={`mt-1.5 h-11 w-full rounded-xl border bg-white px-4 text-sm text-slate-800 transition focus:outline-hidden ${formErrors.name
-                                            ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
-                                            : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
+                                        : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                         }`}
                                 />
                                 {formErrors.name && (
@@ -1365,8 +1365,8 @@ const ManageUsers = () => {
                                         setFormData({ ...formData, email: e.target.value })
                                     }
                                     className={`mt-1.5 h-11 w-full rounded-xl border bg-white px-4 text-sm text-slate-800 transition focus:outline-hidden ${formErrors.email
-                                            ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
-                                            : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                        ? "border-red-300 focus:ring-2 focus:ring-red-500/20"
+                                        : "border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                         }`}
                                 />
                                 {formErrors.email && (
@@ -1417,15 +1417,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "manager" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "manager"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "manager"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "manager" && (
@@ -1447,15 +1447,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "admin" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "admin"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "admin"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "admin" && (
@@ -1477,15 +1477,15 @@ const ManageUsers = () => {
                                             setFormData({ ...formData, role: "member" })
                                         }
                                         className={`cursor-pointer rounded-xl border p-3.5 transition-all ${formData.role === "member"
-                                                ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
-                                                : "border-slate-200 hover:border-slate-300"
+                                            ? "border-[#2161f5] bg-blue-50/30 ring-2 ring-[#2161f5]/15"
+                                            : "border-slate-200 hover:border-slate-300"
                                             }`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${formData.role === "member"
-                                                        ? "border-[#2161f5]"
-                                                        : "border-slate-300"
+                                                    ? "border-[#2161f5]"
+                                                    : "border-slate-300"
                                                     }`}
                                             >
                                                 {formData.role === "member" && (
