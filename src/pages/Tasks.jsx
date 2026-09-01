@@ -17,6 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 const Tasks = () => {
@@ -67,9 +70,7 @@ const Tasks = () => {
   // =====================================================
 
   const [tasks, setTasks] = useState([]);
-
   const [projects, setProjects] = useState([]);
-
   const [users, setUsers] = useState([]);
 
   const [formData, setFormData] =
@@ -82,7 +83,7 @@ const Tasks = () => {
     useState("");
 
   // =====================================================
-  // MODAL
+  // FORM / VIEW MODALS
   // =====================================================
 
   const [showModal, setShowModal] =
@@ -96,6 +97,38 @@ const Tasks = () => {
 
   const [editId, setEditId] =
     useState(null);
+
+  // =====================================================
+  // DELETE MODAL
+  // =====================================================
+
+  const [showDeleteModal, setShowDeleteModal] =
+    useState(false);
+
+  const [deleteTaskId, setDeleteTaskId] =
+    useState(null);
+
+  const [deleteTaskTitle, setDeleteTaskTitle] =
+    useState("");
+
+  const [deleting, setDeleting] =
+    useState(false);
+
+  // =====================================================
+  // MESSAGE MODAL
+  // =====================================================
+
+  const [showMessageModal, setShowMessageModal] =
+    useState(false);
+
+  const [messageType, setMessageType] =
+    useState("success");
+
+  const [messageTitle, setMessageTitle] =
+    useState("");
+
+  const [messageText, setMessageText] =
+    useState("");
 
   // =====================================================
   // SEARCH + FILTER
@@ -117,8 +150,7 @@ const Tasks = () => {
   const [currentPage, setCurrentPage] =
     useState(1);
 
-  const [perPage] =
-    useState(10);
+  const perPage = 10;
 
   const [totalRecords, setTotalRecords] =
     useState(0);
@@ -146,16 +178,13 @@ const Tasks = () => {
   const getLoggedUser = () => {
     try {
       const storedUser =
-        localStorage.getItem(
-          "pms:session"
-        );
+        localStorage.getItem("pms:session");
 
       if (!storedUser) {
         return null;
       }
 
       return JSON.parse(storedUser);
-
     } catch (err) {
       console.error(
         "User Parse Error:",
@@ -164,6 +193,31 @@ const Tasks = () => {
 
       return null;
     }
+  };
+
+  // =====================================================
+  // SHOW MESSAGE MODAL
+  // =====================================================
+
+  const showMessage = (
+    type,
+    title,
+    message
+  ) => {
+    setMessageType(type);
+    setMessageTitle(title);
+    setMessageText(message);
+    setShowMessageModal(true);
+  };
+
+  // =====================================================
+  // CLOSE MESSAGE MODAL
+  // =====================================================
+
+  const closeMessageModal = () => {
+    setShowMessageModal(false);
+    setMessageTitle("");
+    setMessageText("");
   };
 
   // =====================================================
@@ -185,16 +239,12 @@ const Tasks = () => {
           await axios.post(
             `${API_BASE_URL}/task/task_list`,
             {
-              page: page,
-
+              page,
               per_page: perPage,
-
               taskTitle:
                 searchTerm.trim(),
-
-              priority: priority,
-
-              status: status,
+              priority,
+              status,
             },
             API_HEADERS
           );
@@ -209,36 +259,55 @@ const Tasks = () => {
           const pagination =
             responseData.pagination || {};
 
-          setTasks(
+          const newTasks =
             Array.isArray(taskData)
               ? taskData
-              : []
-          );
+              : [];
 
-          setTotalRecords(
+          const newTotalRecords =
             Number(
               pagination.totalRecords || 0
-            )
-          );
+            );
 
-          setTotalPages(
+          const newTotalPages =
             Number(
               pagination.totalPages || 1
-            )
-          );
+            );
 
-          setCurrentPage(
+          const newCurrentPage =
             Number(
               pagination.currentPage ||
                 page
-            )
+            );
+
+          setTasks(newTasks);
+          setTotalRecords(
+            newTotalRecords
+          );
+          setTotalPages(
+            newTotalPages
+          );
+          setCurrentPage(
+            newCurrentPage
           );
 
+          // ------------------------------------------------
+          // If current page becomes empty after delete
+          // ------------------------------------------------
+
+          if (
+            newTasks.length === 0 &&
+            newCurrentPage > 1 &&
+            newCurrentPage >
+              newTotalPages
+          ) {
+            setCurrentPage(
+              newCurrentPage - 1
+            );
+          }
         } else {
           setTasks([]);
-
           setTotalRecords(0);
-
           setTotalPages(1);
 
           setError(
@@ -246,7 +315,6 @@ const Tasks = () => {
               "Unable to fetch task list."
           );
         }
-
       } catch (err) {
         console.error(
           "Task List Error:",
@@ -254,16 +322,13 @@ const Tasks = () => {
         );
 
         setTasks([]);
-
         setTotalRecords(0);
-
         setTotalPages(1);
 
         setError(
           err.response?.data?.message ||
             "Error fetching task list."
         );
-
       } finally {
         setLoading(false);
       }
@@ -273,7 +338,6 @@ const Tasks = () => {
       search,
       priorityFilter,
       statusFilter,
-      perPage,
     ]
   );
 
@@ -304,7 +368,6 @@ const Tasks = () => {
         } else {
           setProjects([]);
         }
-
       } catch (err) {
         console.error(
           "Project List Error:",
@@ -353,11 +416,9 @@ const Tasks = () => {
           } else {
             setUsers([]);
           }
-
         } else {
           setUsers([]);
         }
-
       } catch (err) {
         console.error(
           "User List Error:",
@@ -394,7 +455,6 @@ const Tasks = () => {
 
       setFormData((prev) => ({
         ...prev,
-
         createdBy: userId,
       }));
 
@@ -406,7 +466,7 @@ const Tasks = () => {
   ]);
 
   // =====================================================
-  // FETCH TASK WHEN SEARCH / FILTER / PAGE CHANGES
+  // FETCH TASKS ON SEARCH / FILTER / PAGE
   // =====================================================
 
   useEffect(() => {
@@ -428,6 +488,7 @@ const Tasks = () => {
     search,
     priorityFilter,
     statusFilter,
+    fetchTasks,
   ]);
 
   // =====================================================
@@ -442,13 +503,11 @@ const Tasks = () => {
 
     setFormData((prev) => ({
       ...prev,
-
       [name]: value,
     }));
 
     setErrors((prev) => ({
       ...prev,
-
       [name]: "",
     }));
 
@@ -460,9 +519,7 @@ const Tasks = () => {
     ) {
       setErrors((prev) => ({
         ...prev,
-
         startDate: "",
-
         dueDate: "",
       }));
     }
@@ -548,14 +605,10 @@ const Tasks = () => {
       formData.dueDate
     ) {
       const start =
-        new Date(
-          formData.startDate
-        );
+        new Date(formData.startDate);
 
       const due =
-        new Date(
-          formData.dueDate
-        );
+        new Date(formData.dueDate);
 
       if (due < start) {
         newErrors.dueDate =
@@ -584,7 +637,9 @@ const Tasks = () => {
       getLoggedUser();
 
     if (!loggedUser) {
-      setError(
+      showMessage(
+        "error",
+        "Login Required",
         "Please login first."
       );
 
@@ -611,13 +666,10 @@ const Tasks = () => {
 
     setFormData({
       ...initialFormData,
-
       createdBy: userId,
     });
 
-    setCreatedByName(
-      userName
-    );
+    setCreatedByName(userName);
 
     setShowModal(true);
   };
@@ -664,16 +716,12 @@ const Tasks = () => {
 
       startDate:
         task?.startDate
-          ? task.startDate.split(
-              "T"
-            )[0]
+          ? task.startDate.split("T")[0]
           : "",
 
       dueDate:
         task?.dueDate
-          ? task.dueDate.split(
-              "T"
-            )[0]
+          ? task.dueDate.split("T")[0]
           : "",
 
       status:
@@ -710,7 +758,6 @@ const Tasks = () => {
 
   const handleView = (task) => {
     setSelectedTask(task);
-
     setShowViewModal(true);
   };
 
@@ -720,7 +767,6 @@ const Tasks = () => {
 
   const handleCloseView = () => {
     setShowViewModal(false);
-
     setSelectedTask(null);
   };
 
@@ -743,16 +789,12 @@ const Tasks = () => {
       "";
 
     setShowModal(false);
-
     setEditId(null);
-
     setErrors(initialErrors);
-
     setError("");
 
     setFormData({
       ...initialFormData,
-
       createdBy: userId,
     });
   };
@@ -775,10 +817,8 @@ const Tasks = () => {
 
       const payload = {
         ...formData,
-
         taskTitle:
           formData.taskTitle.trim(),
-
         description:
           formData.description.trim(),
       };
@@ -793,20 +833,13 @@ const Tasks = () => {
             `${API_BASE_URL}/task/task_update`,
             {
               id: editId,
-
               taskId: editId,
-
               ...payload,
             },
             API_HEADERS
           );
 
         if (response.data?.success) {
-          alert(
-            response.data?.message ||
-              "Task updated successfully!"
-          );
-
           handleCloseModal();
 
           await fetchTasks(
@@ -816,6 +849,12 @@ const Tasks = () => {
             statusFilter
           );
 
+          showMessage(
+            "success",
+            "Task Updated",
+            response.data?.message ||
+              "Task updated successfully!"
+          );
         } else {
           setError(
             response.data?.message ||
@@ -838,11 +877,6 @@ const Tasks = () => {
         );
 
       if (response.data?.success) {
-        alert(
-          response.data?.message ||
-            "Task created successfully!"
-        );
-
         handleCloseModal();
 
         setCurrentPage(1);
@@ -854,13 +888,18 @@ const Tasks = () => {
           statusFilter
         );
 
+        showMessage(
+          "success",
+          "Task Created",
+          response.data?.message ||
+            "Task added successfully!"
+        );
       } else {
         setError(
           response.data?.message ||
             "Failed to create task."
         );
       }
-
     } catch (err) {
       console.error(
         "Task Save Error:",
@@ -871,26 +910,66 @@ const Tasks = () => {
         err.response?.data?.message ||
           "Something went wrong while saving task."
       );
-
     } finally {
       setSubmitting(false);
     }
   };
 
   // =====================================================
-  // DELETE
+  // OPEN DELETE MODAL
   // =====================================================
 
-  const handleDelete = async (id) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this task?"
-      )
-    ) {
+  const handleDelete = (task) => {
+    const taskId =
+      task?._id ||
+      task?.id;
+
+    if (!taskId) {
+      showMessage(
+        "error",
+        "Delete Failed",
+        "Task ID not found."
+      );
+
+      return;
+    }
+
+    setDeleteTaskId(taskId);
+
+    setDeleteTaskTitle(
+      task?.taskTitle ||
+        "this task"
+    );
+
+    setShowDeleteModal(true);
+  };
+
+  // =====================================================
+  // CLOSE DELETE MODAL
+  // =====================================================
+
+  const closeDeleteModal = () => {
+    if (deleting) {
+      return;
+    }
+
+    setShowDeleteModal(false);
+    setDeleteTaskId(null);
+    setDeleteTaskTitle("");
+  };
+
+  // =====================================================
+  // CONFIRM DELETE
+  // =====================================================
+
+  const confirmDelete = async () => {
+    if (!deleteTaskId) {
       return;
     }
 
     try {
+      setDeleting(true);
+
       const response =
         await axios.delete(
           `${API_BASE_URL}/task/task_delete`,
@@ -898,55 +977,75 @@ const Tasks = () => {
             ...API_HEADERS,
 
             data: {
-              id: id,
-
-              taskId: id,
-
-              _id: id,
+              id: deleteTaskId,
+              taskId: deleteTaskId,
+              _id: deleteTaskId,
             },
           }
         );
 
       if (response.data?.success) {
-        alert(
-          response.data?.message ||
-            "Task deleted successfully!"
-        );
+        const wasLastItem =
+          tasks.length === 1;
 
-        // If last item on page
+        const pageAfterDelete =
+          wasLastItem &&
+          currentPage > 1
+            ? currentPage - 1
+            : currentPage;
+
+        closeDeleteModal();
+
+        // ------------------------------------------------
+        // If last item on page, move to previous page
+        // ------------------------------------------------
+
         if (
-          tasks.length === 1 &&
+          wasLastItem &&
           currentPage > 1
         ) {
           setCurrentPage(
-            currentPage - 1
+            pageAfterDelete
           );
+
+          // useEffect will fetch automatically
         } else {
           await fetchTasks(
-            currentPage,
+            pageAfterDelete,
             search,
             priorityFilter,
             statusFilter
           );
         }
 
+        showMessage(
+          "success",
+          "Task Deleted",
+          response.data?.message ||
+            "Task deleted successfully!"
+        );
       } else {
-        alert(
+        showMessage(
+          "error",
+          "Delete Failed",
           response.data?.message ||
             "Failed to delete task."
         );
       }
-
     } catch (err) {
       console.error(
         "Delete Task Error:",
         err
       );
 
-      alert(
+      showMessage(
+        "error",
+        "Delete Failed",
         err.response?.data?.message ||
           "Error deleting task."
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -956,11 +1055,8 @@ const Tasks = () => {
 
   const resetFilters = () => {
     setSearch("");
-
     setPriorityFilter("");
-
     setStatusFilter("");
-
     setCurrentPage(1);
   };
 
@@ -970,7 +1066,6 @@ const Tasks = () => {
 
   const getPageNumbers = () => {
     const pages = [];
-
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
@@ -993,13 +1088,11 @@ const Tasks = () => {
 
     if (start < 1) {
       start = 1;
-
       end = 5;
     }
 
     if (end > totalPages) {
       end = totalPages;
-
       start =
         totalPages - 4;
     }
@@ -1024,8 +1117,7 @@ const Tasks = () => {
   ) => {
     if (
       projectData &&
-      typeof projectData ===
-        "object"
+      typeof projectData === "object"
     ) {
       return (
         projectData.projectName ||
@@ -1161,7 +1253,7 @@ const Tasks = () => {
         <button
           type="button"
           onClick={handleAddTask}
-          className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#2161f5] px-5 text-sm font-semibold text-white hover:bg-[#1954dc]"
+          className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#2161f5] px-5 text-sm font-semibold text-white transition hover:bg-[#1954dc]"
         >
           <Plus size={19} />
 
@@ -1365,20 +1457,23 @@ const Tasks = () => {
             <tbody className="divide-y divide-[#e2e8f0]">
 
               {loading ? (
-
                 <tr>
                   <td
                     colSpan="10"
                     className="px-5 py-16 text-center text-sm text-[#64748b]"
                   >
-                    Loading tasks...
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2
+                        size={18}
+                        className="animate-spin"
+                      />
+
+                      Loading tasks...
+                    </div>
                   </td>
                 </tr>
-
               ) : tasks.length > 0 ? (
-
                 tasks.map((task) => {
-
                   const taskId =
                     task?._id ||
                     task?.id;
@@ -1430,7 +1525,6 @@ const Tasks = () => {
                       {/* PRIORITY */}
 
                       <td className="px-5 py-4">
-
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getPriorityClass(
                             task.priority
@@ -1438,15 +1532,12 @@ const Tasks = () => {
                         >
                           {task.priority}
                         </span>
-
                       </td>
 
                       {/* START */}
 
                       <td className="px-5 py-4">
-
                         <div className="flex items-center gap-2 text-sm text-[#475569]">
-
                           <CalendarDays size={15} />
 
                           {task.startDate
@@ -1454,17 +1545,13 @@ const Tasks = () => {
                                 "T"
                               )[0]
                             : "-"}
-
                         </div>
-
                       </td>
 
                       {/* DUE */}
 
                       <td className="px-5 py-4">
-
                         <div className="flex items-center gap-2 text-sm text-[#475569]">
-
                           <CalendarDays size={15} />
 
                           {task.dueDate
@@ -1472,15 +1559,12 @@ const Tasks = () => {
                                 "T"
                               )[0]
                             : "-"}
-
                         </div>
-
                       </td>
 
                       {/* STATUS */}
 
                       <td className="px-5 py-4">
-
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
                             task.status
@@ -1488,22 +1572,17 @@ const Tasks = () => {
                         >
                           {task.status}
                         </span>
-
                       </td>
 
                       {/* CREATED BY */}
 
                       <td className="px-5 py-4">
-
                         <span className="text-sm text-[#475569]">
-
                           {task.createdBy?.name ||
                             task.createdBy?.username ||
                             task.createdBy?.email ||
                             "-"}
-
                         </span>
-
                       </td>
 
                       {/* ACTION */}
@@ -1511,6 +1590,8 @@ const Tasks = () => {
                       <td className="px-5 py-4">
 
                         <div className="flex justify-center gap-1">
+
+                          {/* VIEW */}
 
                           <button
                             type="button"
@@ -1523,6 +1604,8 @@ const Tasks = () => {
                             <Eye size={17} />
                           </button>
 
+                          {/* EDIT */}
+
                           <button
                             type="button"
                             onClick={() =>
@@ -1534,12 +1617,12 @@ const Tasks = () => {
                             <Pencil size={17} />
                           </button>
 
+                          {/* DELETE */}
+
                           <button
                             type="button"
                             onClick={() =>
-                              handleDelete(
-                                taskId
-                              )
+                              handleDelete(task)
                             }
                             className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 hover:bg-red-50"
                             title="Delete"
@@ -1554,16 +1637,12 @@ const Tasks = () => {
                     </tr>
                   );
                 })
-
               ) : (
-
                 <tr>
-
                   <td
                     colSpan="10"
                     className="px-5 py-16 text-center"
                   >
-
                     <div className="text-sm font-medium text-[#64748b]">
                       No tasks found.
                     </div>
@@ -1571,11 +1650,8 @@ const Tasks = () => {
                     <p className="mt-1 text-xs text-[#94a3b8]">
                       Try changing your search or filters.
                     </p>
-
                   </td>
-
                 </tr>
-
               )}
 
             </tbody>
@@ -1590,32 +1666,26 @@ const Tasks = () => {
 
         <div className="flex flex-col gap-4 border-t border-[#e2e8f0] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
 
-          {/* TOTAL */}
-
           <div className="text-sm text-[#64748b]">
 
             Showing{" "}
 
             <span className="font-semibold text-[#334155]">
-
               {totalRecords === 0
                 ? 0
                 : (currentPage - 1) *
                     perPage +
                   1}
-
             </span>
 
             {" "}to{" "}
 
             <span className="font-semibold text-[#334155]">
-
               {Math.min(
                 currentPage *
                   perPage,
                 totalRecords
               )}
-
             </span>
 
             {" "}of{" "}
@@ -1627,8 +1697,6 @@ const Tasks = () => {
             {" "}tasks
 
           </div>
-
-          {/* BUTTONS */}
 
           <div className="flex items-center justify-center gap-1">
 
@@ -1663,13 +1731,10 @@ const Tasks = () => {
                   type="button"
                   disabled={loading}
                   onClick={() =>
-                    setCurrentPage(
-                      page
-                    )
+                    setCurrentPage(page)
                   }
                   className={`h-9 min-w-9 rounded-lg px-3 text-sm font-medium ${
-                    currentPage ===
-                    page
+                    currentPage === page
                       ? "bg-[#2161f5] text-white"
                       : "border border-[#dbe2ea] text-[#475569] hover:bg-gray-50"
                   }`}
@@ -1728,9 +1793,7 @@ const Tasks = () => {
 
               <button
                 type="button"
-                onClick={
-                  handleCloseModal
-                }
+                onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
@@ -1746,7 +1809,6 @@ const Tasks = () => {
               {/* TASK TITLE */}
 
               <div>
-
                 <label className="mb-1 block text-xs font-semibold text-[#475569]">
                   Task Title
                 </label>
@@ -1770,13 +1832,11 @@ const Tasks = () => {
                     errors.taskTitle
                   }
                 />
-
               </div>
 
               {/* DESCRIPTION */}
 
               <div>
-
                 <label className="mb-1 block text-xs font-semibold text-[#475569]">
                   Description
                 </label>
@@ -1800,7 +1860,6 @@ const Tasks = () => {
                     errors.description
                   }
                 />
-
               </div>
 
               {/* PROJECT + ASSIGNED */}
@@ -1808,7 +1867,6 @@ const Tasks = () => {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Project
                   </label>
@@ -1856,11 +1914,9 @@ const Tasks = () => {
                       errors.projectId
                     }
                   />
-
                 </div>
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Assigned To
                   </label>
@@ -1908,7 +1964,6 @@ const Tasks = () => {
                       errors.assignedTo
                     }
                   />
-
                 </div>
 
               </div>
@@ -1918,7 +1973,6 @@ const Tasks = () => {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Priority
                   </label>
@@ -1955,11 +2009,9 @@ const Tasks = () => {
                       errors.priority
                     }
                   />
-
                 </div>
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Status
                   </label>
@@ -2000,7 +2052,6 @@ const Tasks = () => {
                       errors.status
                     }
                   />
-
                 </div>
 
               </div>
@@ -2010,7 +2061,6 @@ const Tasks = () => {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Start Date
                   </label>
@@ -2034,11 +2084,9 @@ const Tasks = () => {
                       errors.startDate
                     }
                   />
-
                 </div>
 
                 <div>
-
                   <label className="mb-1 block text-xs font-semibold text-[#475569]">
                     Due Date
                   </label>
@@ -2062,7 +2110,6 @@ const Tasks = () => {
                       errors.dueDate
                     }
                   />
-
                 </div>
 
               </div>
@@ -2070,7 +2117,6 @@ const Tasks = () => {
               {/* CREATED BY */}
 
               <div>
-
                 <label className="mb-1 block text-xs font-semibold text-[#475569]">
                   Created By
                 </label>
@@ -2084,6 +2130,11 @@ const Tasks = () => {
                   className="h-10 w-full rounded-lg border border-[#dbe2ea] bg-gray-100 px-4 text-sm text-gray-500"
                 />
 
+                <FieldError
+                  message={
+                    errors.createdBy
+                  }
+                />
               </div>
 
               {/* ACTION */}
@@ -2095,23 +2146,31 @@ const Tasks = () => {
                   onClick={
                     handleCloseModal
                   }
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                  disabled={submitting}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={
-                    submitting
-                  }
-                  className="rounded-lg bg-[#2161f5] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1954dc] disabled:opacity-50"
+                  disabled={submitting}
+                  className="flex items-center gap-2 rounded-lg bg-[#2161f5] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1954dc] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+
+                  {submitting && (
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                    />
+                  )}
+
                   {submitting
                     ? "Saving..."
                     : editId
                     ? "Update Task"
                     : "Create Task"}
+
                 </button>
 
               </div>
@@ -2138,7 +2197,6 @@ const Tasks = () => {
               <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
 
                 <div>
-
                   <h2 className="text-lg font-bold text-[#1e293b]">
                     Task Details
                   </h2>
@@ -2146,7 +2204,6 @@ const Tasks = () => {
                   <p className="mt-1 text-xs text-[#94a3b8]">
                     View complete task information
                   </p>
-
                 </div>
 
                 <button
@@ -2176,7 +2233,6 @@ const Tasks = () => {
                   <h3 className="text-xl font-bold text-[#1e293b]">
                     {selectedTask.taskTitle ||
                       "-"}
-
                   </h3>
 
                 </div>
@@ -2226,15 +2282,9 @@ const Tasks = () => {
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-[#334155]">
-                      {selectedTask
-                        .assignedTo
-                        ?.name ||
-                        selectedTask
-                          .assignedTo
-                          ?.username ||
-                        selectedTask
-                          .assignedTo
-                          ?.email ||
+                      {selectedTask.assignedTo?.name ||
+                        selectedTask.assignedTo?.username ||
+                        selectedTask.assignedTo?.email ||
                         "-"}
                     </p>
 
@@ -2343,15 +2393,9 @@ const Tasks = () => {
                     </p>
 
                     <p className="mt-1 text-sm font-semibold text-[#334155]">
-                      {selectedTask
-                        .createdBy
-                        ?.name ||
-                        selectedTask
-                          .createdBy
-                          ?.username ||
-                        selectedTask
-                          .createdBy
-                          ?.email ||
+                      {selectedTask.createdBy?.name ||
+                        selectedTask.createdBy?.username ||
+                        selectedTask.createdBy?.email ||
                         "-"}
                     </p>
 
@@ -2381,6 +2425,186 @@ const Tasks = () => {
 
           </div>
         )}
+
+      {/* =====================================================
+          DELETE CONFIRMATION MODAL
+      ===================================================== */}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+
+            {/* DELETE ICON */}
+
+            <div className="flex justify-center pt-7">
+
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+
+                <Trash2
+                  size={27}
+                  className="text-red-600"
+                />
+
+              </div>
+
+            </div>
+
+            {/* CONTENT */}
+
+            <div className="px-6 py-5 text-center">
+
+              <h2 className="text-lg font-bold text-[#1e293b]">
+                Delete Task?
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#64748b]">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-[#334155]">
+                  "{deleteTaskTitle}"
+                </span>
+                ?
+              </p>
+
+              <p className="mt-1 text-xs text-red-500">
+                This action cannot be undone.
+              </p>
+
+            </div>
+
+            {/* BUTTONS */}
+
+            <div className="flex justify-end gap-3 border-t border-[#e2e8f0] bg-[#f8fafc] px-6 py-4">
+
+              <button
+                type="button"
+                onClick={
+                  closeDeleteModal
+                }
+                disabled={deleting}
+                className="rounded-lg border border-[#dbe2ea] bg-white px-5 py-2.5 text-sm font-semibold text-[#475569] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex min-w-[120px] items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+
+                {deleting ? (
+                  <>
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                    />
+
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+
+                    Delete Task
+                  </>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =====================================================
+          SUCCESS / ERROR MESSAGE MODAL
+      ===================================================== */}
+
+      {showMessageModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4">
+
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
+
+            {/* ICON */}
+
+            <div className="flex justify-center pt-7">
+
+              <div
+                className={`flex h-16 w-16 items-center justify-center rounded-full ${
+                  messageType ===
+                  "success"
+                    ? "bg-green-100"
+                    : "bg-red-100"
+                }`}
+              >
+
+                {messageType ===
+                "success" ? (
+                  <CheckCircle2
+                    size={34}
+                    className="text-green-600"
+                  />
+                ) : (
+                  <AlertCircle
+                    size={34}
+                    className="text-red-600"
+                  />
+                )}
+
+              </div>
+
+            </div>
+
+            {/* CONTENT */}
+
+            <div className="px-6 py-5 text-center">
+
+              <h2
+                className={`text-lg font-bold ${
+                  messageType ===
+                  "success"
+                    ? "text-green-700"
+                    : "text-red-700"
+                }`}
+              >
+                {messageTitle}
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#64748b]">
+                {messageText}
+              </p>
+
+            </div>
+
+            {/* BUTTON */}
+
+            <div className="flex justify-center border-t border-[#e2e8f0] bg-[#f8fafc] px-6 py-4">
+
+              <button
+                type="button"
+                onClick={
+                  closeMessageModal
+                }
+                className={`rounded-lg px-7 py-2.5 text-sm font-semibold text-white ${
+                  messageType ===
+                  "success"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                OK
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
