@@ -14,14 +14,13 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    RotateCcw
+    RotateCcw,
 } from "lucide-react";
 import axios from "axios";
 
 const API_BASE_URL = "https://project-management-system-backend-2-qyqt.onrender.com";
 
 const Projects = () => {
-
     // ============================================
     // INITIAL FORM DATA
     // ============================================
@@ -32,7 +31,7 @@ const Projects = () => {
         endDate: "",
         priority: "Medium",
         status: "Planning",
-        createdBy: ""
+        createdBy: "",
     };
 
     // ============================================
@@ -105,7 +104,9 @@ const Projects = () => {
     // ============================================
     const getLoggedInUser = () => {
         try {
-            const raw = localStorage.getItem("pms:session") || localStorage.getItem("user");
+            const raw =
+                localStorage.getItem("pms:session") ||
+                localStorage.getItem("user");
             if (!raw) return null;
             const parsed = JSON.parse(raw);
             return parsed?.user || parsed?.data || parsed;
@@ -131,7 +132,7 @@ const Projects = () => {
 
     const getLoggedUserRole = () => {
         const u = getLoggedInUser();
-        return String(u?.role || u?.user?.role || u?.data?.role || "").trim().toLowerCase();
+        return String(u?.role || u?.userType || u?.user?.role || u?.data?.role || "").trim().toLowerCase();
     };
 
     const getLoggedUserName = () => {
@@ -151,93 +152,90 @@ const Projects = () => {
             headers: {
                 "api-key": "projectmanagement",
                 "Content-Type": "application/json",
-                ...(token ? { "Authorization": `Bearer ${token}`, "token": token } : {})
-            }
+                ...(token ? { Authorization: `Bearer ${token}`, token: token } : {}),
+            },
         };
     };
 
     // ============================================
     // FETCH PROJECT LIST (BACKEND PAGINATION & FILTERS)
     // ============================================
-    const fetchProjects = useCallback(async (
-        page = currentPage,
-        limit = perPage,
-        searchTerm = search,
-        priorityVal = priorityFilter,
-        statusVal = statusFilter
-    ) => {
-        try {
-            setLoading(true);
-            setError("");
+    const fetchProjects = useCallback(
+        async (
+            page = currentPage,
+            limit = perPage,
+            searchTerm = search,
+            priorityVal = priorityFilter,
+            statusVal = statusFilter
+        ) => {
+            try {
+                setLoading(true);
+                setError("");
 
-            // Construct payload matching backend exports.getProject
-            const payload = {
-                page: page,
-                per_page: limit,
-                limit: limit,
-                ...(searchTerm.trim() ? { projectName: searchTerm.trim() } : {}),
-                ...(priorityVal && priorityVal !== "all" ? { priority: priorityVal } : {}),
-                ...(statusVal && statusVal !== "all" ? { status: statusVal } : {})
-            };
+                const payload = {
+                    page: page,
+                    per_page: limit,
+                    limit: limit,
+                    ...(searchTerm.trim() ? { projectName: searchTerm.trim() } : {}),
+                    ...(priorityVal && priorityVal !== "all" ? { priority: priorityVal } : {}),
+                    ...(statusVal && statusVal !== "all" ? { status: statusVal } : {}),
+                };
 
-            const response = await axios.post(
-                `${API_BASE_URL}/project/project_list`,
-                payload,
-                getAuthHeaders()
-            );
+                const response = await axios.post(
+                    `${API_BASE_URL}/project/project_list`,
+                    payload,
+                    getAuthHeaders()
+                );
 
-            console.log("Project List Response:", response.data);
+                console.log("Project List Response:", response.data);
 
-            if (response.data?.success) {
-                const resData = response.data?.data;
+                if (response.data?.success) {
+                    const resData = response.data?.data;
 
-                // Handle both resData.projectData or direct array
-                const projectList = Array.isArray(resData?.projectData)
-                    ? resData.projectData
-                    : Array.isArray(resData)
+                    const projectList = Array.isArray(resData?.projectData)
+                        ? resData.projectData
+                        : Array.isArray(resData)
                         ? resData
                         : Array.isArray(response.data?.projectData)
-                            ? response.data.projectData
-                            : [];
+                        ? response.data.projectData
+                        : [];
 
-                const paginationInfo = resData?.pagination || response.data?.pagination;
+                    const paginationInfo = resData?.pagination || response.data?.pagination;
 
-                setProjects(projectList);
+                    setProjects(projectList);
 
-                if (paginationInfo) {
-                    const totalRecs = Number(paginationInfo.totalRecords) || projectList.length;
-                    const calculatedTotalPages =
-                        Number(paginationInfo.totalPages) ||
-                        (totalRecs > 0 ? Math.ceil(totalRecs / limit) : 1);
+                    if (paginationInfo) {
+                        const totalRecs = Number(paginationInfo.totalRecords) || projectList.length;
+                        const calculatedTotalPages =
+                            Number(paginationInfo.totalPages) ||
+                            (totalRecs > 0 ? Math.ceil(totalRecs / limit) : 1);
 
-                    setTotalRecords(totalRecs);
-                    setTotalPages(calculatedTotalPages);
-                    setCurrentPage(Number(paginationInfo.currentPage) || page);
+                        setTotalRecords(totalRecs);
+                        setTotalPages(calculatedTotalPages);
+                        setCurrentPage(Number(paginationInfo.currentPage) || page);
+                    } else {
+                        setTotalRecords(projectList.length);
+                        setTotalPages(Math.max(1, Math.ceil(projectList.length / limit)));
+                        setCurrentPage(page);
+                    }
                 } else {
-                    setTotalRecords(projectList.length);
-                    setTotalPages(Math.max(1, Math.ceil(projectList.length / limit)));
-                    setCurrentPage(page);
+                    setProjects([]);
+                    setTotalRecords(0);
+                    setTotalPages(1);
+                    setError(response.data?.message || "Unable to fetch projects");
                 }
-            } else {
+            } catch (err) {
+                console.error("Fetch Project Error:", err);
                 setProjects([]);
                 setTotalRecords(0);
                 setTotalPages(1);
-                setError(
-                    response.data?.message || "Unable to fetch projects"
-                );
+                setError(err.response?.data?.message || "Error fetching projects");
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error("Fetch Project Error:", err);
-            setProjects([]);
-            setTotalRecords(0);
-            setTotalPages(1);
-            setError(
-                err.response?.data?.message || "Error fetching projects"
-            );
-        } finally {
-            setLoading(false);
-        }
-    }, [currentPage, perPage, search, priorityFilter, statusFilter]);
+        },
+        [currentPage, perPage, search, priorityFilter, statusFilter]
+    );
 
     // Initial Load & Debounced Search/Filter Trigger
     useEffect(() => {
@@ -330,7 +328,7 @@ const Projects = () => {
 
         setFormData({
             ...initialFormData,
-            createdBy: userId
+            createdBy: userId,
         });
 
         setShowModal(true);
@@ -373,7 +371,7 @@ const Projects = () => {
             endDate: toInputDateFormat(project.endDate),
             priority: project.priority || "Medium",
             status: project.status || "Planning",
-            createdBy: createdById
+            createdBy: createdById,
         });
 
         setShowModal(true);
@@ -407,7 +405,6 @@ const Projects = () => {
         try {
             let response;
             try {
-                // Try DELETE endpoint first
                 response = await axios.delete(
                     `${API_BASE_URL}/project/project_delete`,
                     {
@@ -415,19 +412,18 @@ const Projects = () => {
                         data: {
                             id: projectId,
                             _id: projectId,
-                            projectId: projectId
-                        }
+                            projectId: projectId,
+                        },
                     }
                 );
             } catch (delErr) {
-                // Fallback to POST if DELETE is not supported by backend route
                 if (delErr.response?.status === 404 || delErr.response?.status === 405) {
                     response = await axios.post(
                         `${API_BASE_URL}/project/project_delete`,
                         {
                             id: projectId,
                             _id: projectId,
-                            projectId: projectId
+                            projectId: projectId,
                         },
                         getAuthHeaders()
                     );
@@ -440,7 +436,6 @@ const Projects = () => {
                 setSuccess(response?.data?.message || "Project deleted successfully.");
                 setDeleteModal({ show: false, project: null });
 
-                // If deleting last item on current page > 1, go to previous page
                 const isLastItemOnPage = projects.length === 1 && currentPage > 1;
                 const targetPage = isLastItemOnPage ? currentPage - 1 : currentPage;
 
@@ -454,9 +449,7 @@ const Projects = () => {
             }
         } catch (err) {
             console.error("Delete Project Error:", err);
-            setError(
-                err.response?.data?.message || "Error deleting project. Please try again."
-            );
+            setError(err.response?.data?.message || "Error deleting project. Please try again.");
         } finally {
             setDeleteLoading(false);
         }
@@ -482,12 +475,12 @@ const Projects = () => {
 
         setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: value,
         }));
 
         setFormErrors((prev) => ({
             ...prev,
-            [name]: ""
+            [name]: "",
         }));
 
         if (name === "startDate" && formData.endDate) {
@@ -497,12 +490,12 @@ const Projects = () => {
             if (startDate > endDate) {
                 setFormErrors((prev) => ({
                     ...prev,
-                    endDate: "End date must be greater than or equal to start date."
+                    endDate: "End date must be greater than or equal to start date.",
                 }));
             } else {
                 setFormErrors((prev) => ({
                     ...prev,
-                    endDate: ""
+                    endDate: "",
                 }));
             }
         }
@@ -514,12 +507,12 @@ const Projects = () => {
             if (startDate > endDate) {
                 setFormErrors((prev) => ({
                     ...prev,
-                    endDate: "End date must be greater than or equal to start date."
+                    endDate: "End date must be greater than or equal to start date.",
                 }));
             } else {
                 setFormErrors((prev) => ({
                     ...prev,
-                    endDate: ""
+                    endDate: "",
                 }));
             }
         }
@@ -599,9 +592,6 @@ const Projects = () => {
         try {
             setSubmitLoading(true);
 
-            // =====================================================
-            // GET LOGGED-IN USER INFO
-            // =====================================================
             const userId = getLoggedUserId();
             const userRole = getLoggedUserRole();
 
@@ -615,9 +605,6 @@ const Projects = () => {
                 return;
             }
 
-            // =====================================================
-            // CREATE PAYLOAD
-            // =====================================================
             const payload = {
                 projectName: formData.projectName.trim(),
                 description: formData.description.trim(),
@@ -625,7 +612,7 @@ const Projects = () => {
                 endDate: formData.endDate,
                 priority: formData.priority || "Medium",
                 status: formData.status || "Planning",
-                createdBy: userId
+                createdBy: userId,
             };
 
             console.log("PROJECT PAYLOAD =>", payload);
@@ -640,7 +627,7 @@ const Projects = () => {
                     id: editId,
                     _id: editId,
                     projectId: editId,
-                    ...payload
+                    ...payload,
                 };
 
                 let response;
@@ -652,10 +639,7 @@ const Projects = () => {
                         getAuthHeaders()
                     );
                 } catch (putErr) {
-                    if (
-                        putErr.response?.status === 404 ||
-                        putErr.response?.status === 405
-                    ) {
+                    if (putErr.response?.status === 404 || putErr.response?.status === 405) {
                         response = await axios.post(
                             `${API_BASE_URL}/project/project_update`,
                             updatePayload,
@@ -667,37 +651,19 @@ const Projects = () => {
                 }
 
                 if (response?.data?.success === true) {
-                    setSuccess(
-                        response?.data?.message ||
-                        "Project updated successfully."
-                    );
-
+                    setSuccess(response?.data?.message || "Project updated successfully.");
                     setShowModal(false);
                     setEditId(null);
-
                     setFormData({
                         ...initialFormData,
-                        createdBy: userId
+                        createdBy: userId,
                     });
-
                     setFormErrors({});
-
-                    await fetchProjects(
-                        currentPage,
-                        perPage,
-                        search,
-                        priorityFilter,
-                        statusFilter
-                    );
-
+                    await fetchProjects(currentPage, perPage, search, priorityFilter, statusFilter);
                     return;
                 }
 
-                setError(
-                    response?.data?.message ||
-                    "Unable to update project."
-                );
-
+                setError(response?.data?.message || "Unable to update project.");
                 return;
             }
 
@@ -713,38 +679,19 @@ const Projects = () => {
             console.log("CREATE PROJECT RESPONSE =>", response.data);
 
             if (response?.data?.success === true) {
-                setSuccess(
-                    response?.data?.message ||
-                    "Project created successfully."
-                );
-
+                setSuccess(response?.data?.message || "Project created successfully.");
                 setShowModal(false);
-
                 setFormData({
                     ...initialFormData,
-                    createdBy: userId
+                    createdBy: userId,
                 });
-
                 setFormErrors({});
-
                 setCurrentPage(1);
-
-                await fetchProjects(
-                    1,
-                    perPage,
-                    search,
-                    priorityFilter,
-                    statusFilter
-                );
-
+                await fetchProjects(1, perPage, search, priorityFilter, statusFilter);
                 return;
             }
 
-            setError(
-                response?.data?.message ||
-                "Unable to create project."
-            );
-
+            setError(response?.data?.message || "Unable to create project.");
         } catch (err) {
             console.error("Project Save Error:", err);
 
@@ -752,19 +699,11 @@ const Projects = () => {
                 console.error("STATUS =>", err.response.status);
                 console.error("RESPONSE =>", err.response.data);
 
-                setError(
-                    err.response?.data?.message ||
-                    "Operation failed."
-                );
+                setError(err.response?.data?.message || "Operation failed.");
             } else if (err.request) {
-                setError(
-                    "Server is not responding. Please check backend server."
-                );
+                setError("Server is not responding. Please check backend server.");
             } else {
-                setError(
-                    err.message ||
-                    "Error saving project."
-                );
+                setError(err.message || "Error saving project.");
             }
         } finally {
             setSubmitLoading(false);
@@ -804,7 +743,6 @@ const Projects = () => {
 
     return (
         <div className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
-
             {/* ================================= */}
             {/* HEADER */}
             {/* ================================= */}
@@ -812,9 +750,7 @@ const Projects = () => {
                 <div>
                     <div className="flex items-center gap-2">
                         <FolderKanban className="text-blue-600" size={26} />
-                        <h1 className="text-2xl font-bold text-[#1e293b]">
-                            Projects
-                        </h1>
+                        <h1 className="text-2xl font-bold text-[#1e293b]">Projects</h1>
                     </div>
                     <p className="mt-1 text-sm text-[#64748b]">
                         Manage, track, update, and organize your team's projects.
@@ -873,10 +809,8 @@ const Projects = () => {
             {/* TABLE CARD */}
             {/* ================================= */}
             <div className="overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-xs">
-
                 {/* SEARCH & FILTERS TOOLBAR */}
                 <div className="flex flex-col gap-3.5 border-b border-[#e2e8f0] p-4 sm:flex-row sm:items-center sm:justify-between">
-
                     {/* SEARCH INPUT */}
                     <div className="relative flex-1 max-w-md">
                         <Search
@@ -940,7 +874,6 @@ const Projects = () => {
                             </button>
                         )}
                     </div>
-
                 </div>
 
                 {/* TABLE */}
@@ -1013,7 +946,10 @@ const Projects = () => {
                                         </td>
 
                                         <td className="px-5 py-4">
-                                            <div className="max-w-[220px] truncate text-sm text-[#64748b]" title={project.description}>
+                                            <div
+                                                className="max-w-[220px] truncate text-sm text-[#64748b]"
+                                                title={project.description}
+                                            >
                                                 {project.description || "-"}
                                             </div>
                                         </td>
@@ -1105,7 +1041,6 @@ const Projects = () => {
                 {/* ================================= */}
                 {!loading && totalRecords > 0 && (
                     <div className="flex flex-col gap-4 border-t border-[#e2e8f0] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-
                         {/* ITEMS PER PAGE & TOTAL COUNT */}
                         <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-[#64748b]">
                             <div className="flex items-center gap-2">
@@ -1133,7 +1068,6 @@ const Projects = () => {
 
                         {/* PAGE NUMBERS & NAVIGATION */}
                         <div className="flex items-center gap-1.5 self-center sm:self-auto">
-
                             {/* FIRST PAGE */}
                             <button
                                 type="button"
@@ -1177,10 +1111,11 @@ const Projects = () => {
                                             key={`page-${pageNum}`}
                                             type="button"
                                             onClick={() => handlePageChange(pageNum)}
-                                            className={`min-w-[32px] cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold transition ${isActive
-                                                ? "bg-blue-600 text-white shadow-xs"
-                                                : "border border-[#e2e8f0] text-slate-700 hover:bg-slate-100"
-                                                }`}
+                                            className={`min-w-[32px] cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                                                isActive
+                                                    ? "bg-blue-600 text-white shadow-xs"
+                                                    : "border border-[#e2e8f0] text-slate-700 hover:bg-slate-100"
+                                            }`}
                                         >
                                             {pageNum}
                                         </button>
@@ -1209,12 +1144,9 @@ const Projects = () => {
                             >
                                 <ChevronsRight size={16} />
                             </button>
-
                         </div>
-
                     </div>
                 )}
-
             </div>
 
             {/* ================================================== */}
@@ -1223,7 +1155,6 @@ const Projects = () => {
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
                     <div className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-
                         {/* MODAL HEADER */}
                         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e2e8f0] bg-white px-6 py-4">
                             <div>
@@ -1250,7 +1181,6 @@ const Projects = () => {
                         {/* MODAL FORM */}
                         <form onSubmit={handleSubmit} className="p-6" noValidate>
                             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-
                                 {/* PROJECT NAME */}
                                 <div className="md:col-span-2">
                                     <label className="mb-2 block text-sm font-medium text-[#334155]">
@@ -1263,10 +1193,11 @@ const Projects = () => {
                                         onChange={handleChange}
                                         placeholder="Enter project name"
                                         maxLength={100}
-                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${formErrors.projectName
-                                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                            : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                            }`}
+                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${
+                                            formErrors.projectName
+                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                        }`}
                                     />
                                     {formErrors.projectName && (
                                         <p className="mt-1 text-xs text-red-500">
@@ -1287,10 +1218,11 @@ const Projects = () => {
                                         rows="4"
                                         maxLength={500}
                                         placeholder="Enter project description"
-                                        className={`w-full resize-none rounded-xl border px-4 py-2.5 text-sm outline-none transition ${formErrors.description
-                                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                            : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                            }`}
+                                        className={`w-full resize-none rounded-xl border px-4 py-2.5 text-sm outline-none transition ${
+                                            formErrors.description
+                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                        }`}
                                     />
                                     <div className="mt-1 flex items-center justify-between">
                                         {formErrors.description ? (
@@ -1314,20 +1246,22 @@ const Projects = () => {
                                     <div className="relative">
                                         <CalendarDays
                                             size={17}
-                                            className={`absolute left-3 top-1/2 -translate-y-1/2 ${formErrors.startDate
-                                                ? "text-red-400"
-                                                : "text-[#94a3b8]"
-                                                }`}
+                                            className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                                                formErrors.startDate
+                                                    ? "text-red-400"
+                                                    : "text-[#94a3b8]"
+                                            }`}
                                         />
                                         <input
                                             type="date"
                                             name="startDate"
                                             value={formData.startDate}
                                             onChange={handleChange}
-                                            className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition ${formErrors.startDate
-                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                                }`}
+                                            className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition ${
+                                                formErrors.startDate
+                                                    ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                    : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                            }`}
                                         />
                                     </div>
                                     {formErrors.startDate && (
@@ -1345,10 +1279,11 @@ const Projects = () => {
                                     <div className="relative">
                                         <CalendarDays
                                             size={17}
-                                            className={`absolute left-3 top-1/2 -translate-y-1/2 ${formErrors.endDate
-                                                ? "text-red-400"
-                                                : "text-[#94a3b8]"
-                                                }`}
+                                            className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                                                formErrors.endDate
+                                                    ? "text-red-400"
+                                                    : "text-[#94a3b8]"
+                                            }`}
                                         />
                                         <input
                                             type="date"
@@ -1356,10 +1291,11 @@ const Projects = () => {
                                             value={formData.endDate}
                                             min={formData.startDate || undefined}
                                             onChange={handleChange}
-                                            className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition ${formErrors.endDate
-                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                                }`}
+                                            className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none transition ${
+                                                formErrors.endDate
+                                                    ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                    : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                            }`}
                                         />
                                     </div>
                                     {formErrors.endDate && (
@@ -1378,10 +1314,11 @@ const Projects = () => {
                                         name="priority"
                                         value={formData.priority}
                                         onChange={handleChange}
-                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${formErrors.priority
-                                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                            : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                            }`}
+                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${
+                                            formErrors.priority
+                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                        }`}
                                     >
                                         <option value="">Select Priority</option>
                                         <option value="Low">Low</option>
@@ -1404,10 +1341,11 @@ const Projects = () => {
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${formErrors.status
-                                            ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                                            : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                            }`}
+                                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition ${
+                                            formErrors.status
+                                                ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                                                : "border-[#cbd5e1] focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                        }`}
                                     >
                                         <option value="">Select Status</option>
                                         <option value="Planning">Planning</option>
@@ -1433,7 +1371,6 @@ const Projects = () => {
                                         className="w-full cursor-not-allowed rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 text-sm text-[#64748b]"
                                     />
                                 </div>
-
                             </div>
 
                             {/* MODAL BUTTONS */}
@@ -1466,7 +1403,6 @@ const Projects = () => {
                                 </button>
                             </div>
                         </form>
-
                     </div>
                 </div>
             )}
@@ -1477,12 +1413,9 @@ const Projects = () => {
             {viewProject && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
                     <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-
                         {/* HEADER */}
                         <div className="sticky top-0 flex items-center justify-between border-b border-[#e2e8f0] bg-white px-6 py-4">
-                            <h2 className="text-lg font-bold text-[#1e293b]">
-                                Project Details
-                            </h2>
+                            <h2 className="text-lg font-bold text-[#1e293b]">Project Details</h2>
                             <button
                                 type="button"
                                 onClick={() => setViewProject(null)}
@@ -1596,7 +1529,6 @@ const Projects = () => {
                                 </button>
                             </div>
                         </div>
-
                     </div>
                 </div>
             )}
@@ -1612,9 +1544,7 @@ const Projects = () => {
                         </div>
 
                         <div className="mt-4 text-center">
-                            <h3 className="text-lg font-bold text-[#1e293b]">
-                                Delete Project
-                            </h3>
+                            <h3 className="text-lg font-bold text-[#1e293b]">Delete Project</h3>
                             <p className="mt-2 text-sm text-[#64748b]">
                                 Are you sure you want to delete{" "}
                                 <span className="font-semibold text-[#1e293b]">
@@ -1656,7 +1586,6 @@ const Projects = () => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
