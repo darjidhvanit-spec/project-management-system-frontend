@@ -19,12 +19,6 @@ import {
 import axios from "axios";
 
 const API_BASE_URL = "https://project-management-system-backend-2-qyqt.onrender.com";
-const API_HEADERS = {
-    headers: {
-        "api-key": "projectmanagement",
-        "Content-Type": "application/json"
-    }
-};
 
 const Projects = () => {
 
@@ -93,8 +87,11 @@ const Projects = () => {
     const formatDate = (date) => {
         if (!date) return "-";
         if (typeof date === "string" && /^\d{2}-\d{2}-\d{4}$/.test(date)) {
-            const [day, month, year] = date.split("-");
-            return `${year}-${month}-${day}`;
+            return date;
+        }
+        if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const [year, month, day] = date.split("-");
+            return `${day}-${month}-${year}`;
         }
         const newDate = new Date(date);
         if (isNaN(newDate.getTime())) {
@@ -104,18 +101,59 @@ const Projects = () => {
     };
 
     // ============================================
-    // GET LOGGED-IN USER
+    // GET LOGGED-IN USER & AUTH HELPERS
     // ============================================
     const getLoggedInUser = () => {
         try {
-            const userData = JSON.parse(
-                localStorage.getItem("pms:session")
-            );
-            return userData;
+            const raw = localStorage.getItem("pms:session") || localStorage.getItem("user");
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed?.user || parsed?.data || parsed;
         } catch (err) {
             console.error("User data error:", err);
             return null;
         }
+    };
+
+    const getLoggedUserId = () => {
+        const u = getLoggedInUser();
+        return (
+            u?._id ||
+            u?.id ||
+            u?.userId ||
+            u?.user?._id ||
+            u?.user?.id ||
+            u?.data?._id ||
+            u?.data?.id ||
+            ""
+        );
+    };
+
+    const getLoggedUserRole = () => {
+        const u = getLoggedInUser();
+        return String(u?.role || u?.user?.role || u?.data?.role || "").trim().toLowerCase();
+    };
+
+    const getLoggedUserName = () => {
+        const u = getLoggedInUser();
+        return (
+            u?.name ||
+            u?.username ||
+            u?.fullName ||
+            u?.email ||
+            "User"
+        );
+    };
+
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem("token") || "";
+        return {
+            headers: {
+                "api-key": "projectmanagement",
+                "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}`, "token": token } : {})
+            }
+        };
     };
 
     // ============================================
@@ -145,7 +183,7 @@ const Projects = () => {
             const response = await axios.post(
                 `${API_BASE_URL}/project/project_list`,
                 payload,
-                API_HEADERS
+                getAuthHeaders()
             );
 
             console.log("Project List Response:", response.data);
@@ -267,42 +305,28 @@ const Projects = () => {
     const hasActiveFilters = search || priorityFilter !== "all" || statusFilter !== "all";
 
     // ============================================
-    // OPEN CREATE PROJECT MODAL
+    // OPEN CREATE PROJECT MODAL (ADMIN & MANAGER)
     // ============================================
     const handleAddProject = () => {
-        const userData = getLoggedInUser();
+        const userRole = getLoggedUserRole();
+        const userId = getLoggedUserId();
+        const userName = getLoggedUserName();
 
-        const isManagerOrAdmin = (userData) => {
-            const role = String(userData?.role || "").trim().toLowerCase();
-
-            return ["manager", "admin"].includes(role);
-        };
-
-        console.log("Logged In User:", userData);
-        console.log("User Role:", userData?.role);
-
-        if (!isManagerOrAdmin(userData)) {
+        if (!["manager", "admin"].includes(userRole)) {
             setError("Only Manager or Admin can create a project.");
             return;
         }
 
-        const userId =
-            userData?._id ||
-            userData?.id ||
-            userData?.userId ||
-            "";
-
-        const userName =
-            userData?.name ||
-            userData?.username ||
-            userData?.email ||
-            "";
+        if (!userId) {
+            setError("User session is invalid. Please log in again.");
+            return;
+        }
 
         setEditId(null);
         setError("");
         setSuccess("");
         setFormErrors({});
-        setCreatorName(userName);
+        setCreatorName(`${userName} (${userRole.charAt(0).toUpperCase() + userRole.slice(1)})`);
 
         setFormData({
             ...initialFormData,
@@ -311,25 +335,21 @@ const Projects = () => {
 
         setShowModal(true);
     };
+
     // ============================================
-    // OPEN EDIT PROJECT MODAL
+    // OPEN EDIT PROJECT MODAL (ADMIN & MANAGER)
     // ============================================
     const handleEdit = (project) => {
-        const userData = getLoggedInUser();
-        const userRole = (userData?.role || "").toLowerCase();
+        const userRole = getLoggedUserRole();
+        const loggedUserId = getLoggedUserId();
+        const userName = getLoggedUserName();
 
-        if (userData && userData.role && userRole !== "manager" && userRole !== "admin") {
+        if (!["manager", "admin"].includes(userRole)) {
             setError("Only Manager or Admin can edit a project.");
             return;
         }
 
         const projectId = project._id || project.id;
-        const loggedUserId =
-            userData?._id ||
-            userData?.id ||
-            userData?.userId ||
-            "";
-
         const createdById =
             typeof project.createdBy === "object" && project.createdBy !== null
                 ? project.createdBy?._id || project.createdBy?.id || loggedUserId
@@ -337,8 +357,8 @@ const Projects = () => {
 
         const creatorDisplayName =
             typeof project.createdBy === "object" && project.createdBy !== null
-                ? project.createdBy?.name || project.createdBy?.username || project.createdBy?.email || ""
-                : userData?.name || userData?.email || "Manager";
+                ? `${project.createdBy?.name || project.createdBy?.username || project.createdBy?.email || userName} (${project.createdBy?.role || userRole})`
+                : `${userName} (${userRole.charAt(0).toUpperCase() + userRole.slice(1)})`;
 
         setEditId(projectId);
         setError("");
@@ -360,13 +380,12 @@ const Projects = () => {
     };
 
     // ============================================
-    // OPEN DELETE MODAL
+    // OPEN DELETE MODAL (ADMIN & MANAGER)
     // ============================================
     const handleOpenDelete = (project) => {
-        const userData = getLoggedInUser();
-        const userRole = (userData?.role || "").toLowerCase();
+        const userRole = getLoggedUserRole();
 
-        if (userData && userData.role && userRole !== "manager" && userRole !== "admin") {
+        if (!["manager", "admin"].includes(userRole)) {
             setError("Only Manager or Admin can delete a project.");
             return;
         }
@@ -392,7 +411,7 @@ const Projects = () => {
                 response = await axios.delete(
                     `${API_BASE_URL}/project/project_delete`,
                     {
-                        ...API_HEADERS,
+                        ...getAuthHeaders(),
                         data: {
                             id: projectId,
                             _id: projectId,
@@ -410,7 +429,7 @@ const Projects = () => {
                             _id: projectId,
                             projectId: projectId
                         },
-                        API_HEADERS
+                        getAuthHeaders()
                     );
                 } else {
                     throw delErr;
@@ -581,35 +600,18 @@ const Projects = () => {
             setSubmitLoading(true);
 
             // =====================================================
-            // GET LOGGED-IN USER
+            // GET LOGGED-IN USER INFO
             // =====================================================
-            const userData = getLoggedInUser();
-
-            if (!userData) {
-                setError("Please login first.");
-                return;
-            }
-
-            const userId =
-                userData?._id ||
-                userData?.id ||
-                userData?.userId ||
-                "";
+            const userId = getLoggedUserId();
+            const userRole = getLoggedUserRole();
 
             if (!userId) {
-                setError("Logged-in user ID not found.");
+                setError("Logged-in user session expired or user ID not found. Please log in again.");
                 return;
             }
 
-            // =====================================================
-            // ROLE
-            // =====================================================
-            const userRole = String(userData?.role || "")
-                .trim()
-                .toLowerCase();
-
-            if (userRole !== "manager" && userRole !== "admin") {
-                setError("Only Manager or Admin can create a project.");
+            if (!["manager", "admin"].includes(userRole)) {
+                setError("Only Manager or Admin can create or update a project.");
                 return;
             }
 
@@ -623,13 +625,11 @@ const Projects = () => {
                 endDate: formData.endDate,
                 priority: formData.priority || "Medium",
                 status: formData.status || "Planning",
-
-                // Always use logged-in user
                 createdBy: userId
             };
 
             console.log("PROJECT PAYLOAD =>", payload);
-            console.log("LOGGED USER =>", userData);
+            console.log("LOGGED USER ID =>", userId);
             console.log("USER ROLE =>", userRole);
 
             // =====================================================
@@ -649,7 +649,7 @@ const Projects = () => {
                     response = await axios.put(
                         `${API_BASE_URL}/project/project_update`,
                         updatePayload,
-                        API_HEADERS
+                        getAuthHeaders()
                     );
                 } catch (putErr) {
                     if (
@@ -659,7 +659,7 @@ const Projects = () => {
                         response = await axios.post(
                             `${API_BASE_URL}/project/project_update`,
                             updatePayload,
-                            API_HEADERS
+                            getAuthHeaders()
                         );
                     } else {
                         throw putErr;
@@ -707,7 +707,7 @@ const Projects = () => {
             const response = await axios.post(
                 `${API_BASE_URL}/project/project_add`,
                 payload,
-                API_HEADERS
+                getAuthHeaders()
             );
 
             console.log("CREATE PROJECT RESPONSE =>", response.data);
@@ -1428,7 +1428,7 @@ const Projects = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        value={creatorName || getLoggedInUser()?.name || getLoggedInUser()?.email || "Manager"}
+                                        value={creatorName || `${getLoggedUserName()} (${getLoggedUserRole()})`}
                                         disabled
                                         className="w-full cursor-not-allowed rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-4 py-2.5 text-sm text-[#64748b]"
                                     />
