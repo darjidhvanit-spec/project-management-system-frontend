@@ -351,14 +351,14 @@ const MyTasks = () => {
     // =====================================================
     const projectOptions = useMemo(() => {
         const set = new Set();
-        
+
         // Filter tasks that belong to current logged in user
-        const memberTasks = (assignedOnly && user._id) 
+        const memberTasks = (assignedOnly && user._id)
             ? tasks.filter((t) => {
                 const aId = getAssignedId(t.assignedTo);
                 const aName = getAssignedName(t.assignedTo).toLowerCase();
                 return aId === user._id || aName === user.name.toLowerCase();
-              })
+            })
             : tasks;
 
         memberTasks.forEach((t) => {
